@@ -12,7 +12,6 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: dev
     env:
       COGNITO_ADMIN_TEST_TOKEN: ${{ secrets.COGNITO_ADMIN_TEST_TOKEN }}
     steps:
