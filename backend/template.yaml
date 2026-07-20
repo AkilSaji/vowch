@@ -204,10 +204,10 @@ Resources:
     Properties: { GroupName: vowch-super-admin, UserPoolId: !Ref UserPool, Description: Full Vowch administration access }
   TrustReviewerGroup:
     Type: AWS::Cognito::UserPoolGroup
-    Properties: { GroupName: vowch-trust-reviewer, UserPoolId: !Ref UserPool, Description: Identity, skill, trust, passport, and moderation review }
+    Properties: { GroupName: vowch-trust-reviewer, UserPoolId: !Ref UserPool, Description: 'Identity, skill, trust, passport, and moderation review' }
   OpsReviewerGroup:
     Type: AWS::Cognito::UserPoolGroup
-    Properties: { GroupName: vowch-ops-reviewer, UserPoolId: !Ref UserPool, Description: Gig, proof, dispute, and operational review }
+    Properties: { GroupName: vowch-ops-reviewer, UserPoolId: !Ref UserPool, Description: 'Gig, proof, dispute, and operational review' }
   FinanceReviewerGroup:
     Type: AWS::Cognito::UserPoolGroup
     Properties: { GroupName: vowch-finance-reviewer, UserPoolId: !Ref UserPool, Description: Payment and settlement review }

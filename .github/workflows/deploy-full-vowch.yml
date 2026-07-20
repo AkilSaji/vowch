@@ -85,7 +85,7 @@ jobs:
           add_optional_parameter MalwareScanToken "$MALWARE_SCAN_TOKEN"
           add_optional_parameter PushGatewayUrl "$PUSH_GATEWAY_URL"
           add_optional_parameter PushGatewayToken "$PUSH_GATEWAY_TOKEN"
-          sam deploy --template-file backend/template.yaml --stack-name vowch-dev --capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides "${parameters[@]}"
+          sam deploy --template-file backend/template.yaml --stack-name vowch-dev --region "$AWS_REGION" --capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides "${parameters[@]}"
       - name: Smoke test API
         run: |
           API_URL=$(aws cloudformation describe-stacks --stack-name vowch-dev --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
