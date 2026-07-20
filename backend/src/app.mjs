@@ -19,7 +19,7 @@ const ssm = new SSMClient({}); const runtimeConfig = new Map();
 const eventBridge = new EventBridgeClient({});
 const table = process.env.TABLE_NAME;
 const bucket = process.env.UPLOAD_BUCKET;
-const json = (statusCode, body, requestId = 'local') => ({ statusCode, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-request-id': requestId, 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer', 'access-control-allow-origin': process.env.PUBLIC_APP_ORIGIN || 'http://localhost:3000', 'access-control-allow-headers': 'Content-Type,Authorization,Idempotency-Key', 'access-control-allow-credentials': 'true' }, body: JSON.stringify(body) });
+const json = (statusCode, body, requestId = 'local') => ({ statusCode, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-request-id': requestId, 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'Content-Type,Authorization,Idempotency-Key' }, body: JSON.stringify(body) });
 const body = (event) => { try { return event.body ? JSON.parse(event.body) : {}; } catch { return null; } };
 const claims = (event) => event.requestContext?.authorizer?.jwt?.claims || event.requestContext?.authorizer?.claims || {};
 const caller = (event) => claims(event).sub || null;

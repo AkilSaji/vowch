@@ -95,7 +95,7 @@ Globals:
     Cors:
       AllowMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
       AllowHeaders: "Content-Type,Authorization,Idempotency-Key"
-      AllowOrigin: !Ref PublicAppOrigin
+      AllowOrigin: "'*'"
 
 Resources:
   VowchApi:
