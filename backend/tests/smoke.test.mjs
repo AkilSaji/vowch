@@ -8,6 +8,12 @@ test('health endpoint returns service status', async () => {
   assert.equal(JSON.parse(response.body).ok, true);
 });
 
+test('health endpoint accepts the HTTP API stage-prefixed path', async () => {
+  const response = await handler({ rawPath: '/dev/health', requestContext: { stage: 'dev', http: { method: 'GET' } } });
+  assert.equal(response.statusCode, 200);
+  assert.equal(JSON.parse(response.body).ok, true);
+});
+
 test('public request validates required fields', async () => {
   const response = await handler({ rawPath: '/v1/public/requests', body: JSON.stringify({ title: 'x' }), requestContext: { http: { method: 'POST' } } });
   assert.equal(response.statusCode, 400);

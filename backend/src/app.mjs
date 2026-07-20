@@ -164,7 +164,9 @@ const validSignature = async (event) => {
 
 export const handler = async (event) => {
   const requestId = event.requestContext?.requestId || id(); console.log(JSON.stringify({ requestId, path: event.rawPath, method: event.requestContext?.http?.method, at: now() }));
-  const path = event.rawPath || '/'; const method = event.requestContext?.http?.method || 'GET';
+  const rawPath = event.rawPath || '/'; const stage = event.requestContext?.stage;
+  const path = stage && rawPath.startsWith(`/${stage}/`) ? rawPath.slice(stage.length + 1) : rawPath;
+  const method = event.requestContext?.http?.method || 'GET';
   if (method === 'OPTIONS') return json(204, {});
   if (path === '/health') return json(200, { ok: true, service: 'vowch-api', environment: process.env.ENVIRONMENT || 'dev' });
   const adminPermission = adminPermissionFor(path, method);
