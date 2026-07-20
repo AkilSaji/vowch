@@ -13,6 +13,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: dev
+    env:
+      COGNITO_ADMIN_TEST_TOKEN: ${{ secrets.COGNITO_ADMIN_TEST_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,10 +46,9 @@ jobs:
           curl --fail --retry 5 --retry-delay 5 "$API_URL/health"
           echo "VOWCH_API_URL=$API_URL" >> $GITHUB_ENV
       - name: Smoke test admin API
-        if: ${{ secrets.COGNITO_ADMIN_TEST_TOKEN != '' }}
+        if: ${{ env.COGNITO_ADMIN_TEST_TOKEN != '' }}
         env:
           AWS_INTEGRATION: 'true'
-          COGNITO_ADMIN_TEST_TOKEN: ${{ secrets.COGNITO_ADMIN_TEST_TOKEN }}
         run: npm run test:admin:integration --prefix backend
       - name: Backfill worker query indexes
         run: |
