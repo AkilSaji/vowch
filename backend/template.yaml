@@ -310,7 +310,7 @@ Resources:
     Properties: { ApiId: !Ref RealtimeApi, RouteKey: '$disconnect', AuthorizationType: NONE, Target: !Join ['/', ['integrations', !Ref RealtimeIntegration]] }
   RealtimeDefaultRoute:
     Type: AWS::ApiGatewayV2::Route
-    Properties: { ApiId: !Ref RealtimeApi, RouteKey: '$default', AuthorizationType: CUSTOM, AuthorizerId: !Ref RealtimeAuthorizer, Target: !Join ['/', ['integrations', !Ref RealtimeIntegration]] }
+    Properties: { ApiId: !Ref RealtimeApi, RouteKey: '$default', AuthorizationType: NONE, Target: !Join ['/', ['integrations', !Ref RealtimeIntegration]] }
   RealtimeStage:
     Type: AWS::ApiGatewayV2::Stage
     Properties: { ApiId: !Ref RealtimeApi, StageName: !Ref Environment, AutoDeploy: true }
