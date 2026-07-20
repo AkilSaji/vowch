@@ -48,7 +48,44 @@ jobs:
           test -n "$UPLOAD_BUCKET_NAME" && test "$UPLOAD_BUCKET_NAME" != "None"
           echo "UPLOAD_BUCKET_NAME=$UPLOAD_BUCKET_NAME" >> "$GITHUB_ENV"
       - name: Build and deploy application
-        run: sam build --template-file backend/template.yaml && sam deploy --template-file backend/template.yaml --stack-name vowch-dev --capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides Environment=dev PublicAppOrigin=${{ vars.PUBLIC_APP_ORIGIN || 'http://localhost:3000' }} SsmPrefix=/vowch/dev PaymentWebhookSecret=${{ secrets.PAYMENT_WEBHOOK_SECRET }} RazorpayKeyId=${{ secrets.RAZORPAY_KEY_ID }} RazorpayKeySecret=${{ secrets.RAZORPAY_KEY_SECRET }} GroqApiKey=${{ secrets.GROQ_API_KEY }} GmailSmtpUser=${{ secrets.GMAIL_SMTP_USER }} GmailAppPassword=${{ secrets.GMAIL_APP_PASSWORD }} GroqModel=${{ vars.GROQ_MODEL || 'llama-3.3-70b-versatile' }} UploadBucketName=${{ env.UPLOAD_BUCKET_NAME }} MalwareScanUrl=${{ secrets.MALWARE_SCAN_URL }} MalwareScanToken=${{ secrets.MALWARE_SCAN_TOKEN }} PushGatewayUrl=${{ secrets.PUSH_GATEWAY_URL }} PushGatewayToken=${{ secrets.PUSH_GATEWAY_TOKEN }}
+        env:
+          PUBLIC_APP_ORIGIN: ${{ vars.PUBLIC_APP_ORIGIN || 'http://localhost:3000' }}
+          PAYMENT_WEBHOOK_SECRET: ${{ secrets.PAYMENT_WEBHOOK_SECRET }}
+          RAZORPAY_KEY_ID: ${{ secrets.RAZORPAY_KEY_ID }}
+          RAZORPAY_KEY_SECRET: ${{ secrets.RAZORPAY_KEY_SECRET }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GMAIL_SMTP_USER: ${{ secrets.GMAIL_SMTP_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GROQ_MODEL: ${{ vars.GROQ_MODEL || 'llama-3.3-70b-versatile' }}
+          MALWARE_SCAN_URL: ${{ secrets.MALWARE_SCAN_URL }}
+          MALWARE_SCAN_TOKEN: ${{ secrets.MALWARE_SCAN_TOKEN }}
+          PUSH_GATEWAY_URL: ${{ secrets.PUSH_GATEWAY_URL }}
+          PUSH_GATEWAY_TOKEN: ${{ secrets.PUSH_GATEWAY_TOKEN }}
+        run: |
+          sam build --template-file backend/template.yaml
+          parameters=(
+            "Environment=dev"
+            "PublicAppOrigin=$PUBLIC_APP_ORIGIN"
+            "SsmPrefix=/vowch/dev"
+            "GroqModel=$GROQ_MODEL"
+            "UploadBucketName=$UPLOAD_BUCKET_NAME"
+          )
+          add_optional_parameter() {
+            local name="$1"
+            local value="$2"
+            if [ -n "$value" ]; then parameters+=("$name=$value"); fi
+          }
+          add_optional_parameter PaymentWebhookSecret "$PAYMENT_WEBHOOK_SECRET"
+          add_optional_parameter RazorpayKeyId "$RAZORPAY_KEY_ID"
+          add_optional_parameter RazorpayKeySecret "$RAZORPAY_KEY_SECRET"
+          add_optional_parameter GroqApiKey "$GROQ_API_KEY"
+          add_optional_parameter GmailSmtpUser "$GMAIL_SMTP_USER"
+          add_optional_parameter GmailAppPassword "$GMAIL_APP_PASSWORD"
+          add_optional_parameter MalwareScanUrl "$MALWARE_SCAN_URL"
+          add_optional_parameter MalwareScanToken "$MALWARE_SCAN_TOKEN"
+          add_optional_parameter PushGatewayUrl "$PUSH_GATEWAY_URL"
+          add_optional_parameter PushGatewayToken "$PUSH_GATEWAY_TOKEN"
+          sam deploy --template-file backend/template.yaml --stack-name vowch-dev --capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides "${parameters[@]}"
       - name: Smoke test API
         run: |
           API_URL=$(aws cloudformation describe-stacks --stack-name vowch-dev --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
