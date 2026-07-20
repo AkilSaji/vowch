@@ -585,7 +585,7 @@ Resources:
     Properties:
       DashboardName: !Sub 'vowch-${Environment}'
       DashboardBody: !Sub |
-        {"widgets":[{"type":"metric","width":12,"height":6,"properties":{"title":"API errors","metrics":[["AWS/Lambda","Errors","FunctionName","${ApiFunction}"]],"period":300,"stat":"Sum"}},{"type":"metric","width":12,"height":6,"properties":{"title":"Proof worker errors","metrics":[["AWS/Lambda","Errors","FunctionName","${ProofReviewWorker}"]],"period":300,"stat":"Sum"}}]}
+        {"widgets":[{"type":"metric","width":12,"height":6,"properties":{"title":"API errors","region":"${AWS::Region}","metrics":[["AWS/Lambda","Errors","FunctionName","${ApiFunction}"]],"period":300,"stat":"Sum"}},{"type":"metric","width":12,"height":6,"properties":{"title":"Proof worker errors","region":"${AWS::Region}","metrics":[["AWS/Lambda","Errors","FunctionName","${ProofReviewWorker}"]],"period":300,"stat":"Sum"}}]}
 
 Outputs:
   ApiUrl: { Value: !Sub 'https://${VowchApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}' }
