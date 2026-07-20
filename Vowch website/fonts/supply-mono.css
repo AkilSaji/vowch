@@ -1,0 +1,10 @@
+
+@font-face {
+  font-family: 'Supply Mono';
+  font-style: normal;
+  font-weight: 500;
+  src: url(supply-mono/PPSupplyMono-Medium.woff2) format('woff2'),
+  url(supply-mono/PPSupplyMono-Medium.woff) format('woff');
+  font-display: swap;
+}
+

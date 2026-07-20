@@ -1,0 +1,22 @@
+Root URL: https://incredibles.dev/
+Pages downloaded: 13
+Assets downloaded: 77
+Failed: 0
+Skipped: 2
+Blocked: 0
+
+Failed entries:
+
+Skipped entries:
+playwright fallback: https://incredibles.dev/__sitemap__/fr-FR.xml (Page.goto: Timeout 45000ms exceeded.
+Call log:
+  - navigating to "https://incredibles.dev/__sitemap__/fr-FR.xml", waiting until "networkidle"
+)
+playwright fallback: https://incredibles.dev/__sitemap__/en-US.xml (Page.goto: Timeout 45000ms exceeded.
+Call log:
+  - navigating to "https://incredibles.dev/__sitemap__/en-US.xml", waiting until "networkidle"
+)
+
+Blocked entries:
+
+Remaining external links detected: 65
