@@ -1,0 +1,17 @@
+@font-face {
+  font-family: 'Frama';
+  font-style: normal;
+  font-weight: 400;
+  src: url(frama/PPFrama-Regular-RD.woff2) format('woff2'),
+  url(frama/PPFrama-Regular-RD.woff) format('woff');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Frama';
+  font-style: normal;
+  font-weight: 500;
+  src: url(frama/PPFrama-Medium-RD.woff2) format('woff2'),
+  url(frama/PPFrama-Medium-RD.woff) format('woff');
+  font-display: swap;
+}

@@ -1,6 +1,10 @@
 # Node and build outputs
 node_modules/
 dist/
+*.tsbuildinfo
+*.log
+vite.config.js
+vite.config.d.ts
 coverage/
 .aws-sam/
 
