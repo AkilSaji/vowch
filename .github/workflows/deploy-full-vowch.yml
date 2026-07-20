@@ -33,6 +33,13 @@ jobs:
       - name: Deploy bootstrap stack
         run: |
           aws cloudformation deploy --template-file infra/bootstrap.yaml --stack-name vowch-bootstrap-dev --capabilities CAPABILITY_NAMED_IAM --parameter-overrides Environment=dev GitHubOrg=${{ github.repository_owner }} GitHubRepo=${{ github.event.repository.name }} AlertEmail=${{ vars.ALERT_EMAIL }}
+      - name: Remove failed security stack before retry
+        run: |
+          STATUS=$(aws cloudformation describe-stacks --stack-name vowch-security-dev --query 'Stacks[0].StackStatus' --output text 2>/dev/null || true)
+          if [ "$STATUS" = "ROLLBACK_COMPLETE" ]; then
+            aws cloudformation delete-stack --stack-name vowch-security-dev
+            aws cloudformation wait stack-delete-complete --stack-name vowch-security-dev
+          fi
       - name: Deploy security stack
         run: sam deploy --template-file infra/security.yaml --stack-name vowch-security-dev --capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides Environment=dev
       - name: Resolve secure upload bucket

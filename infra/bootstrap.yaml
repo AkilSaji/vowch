@@ -54,7 +54,42 @@ Resources:
             Version: '2012-10-17'
             Statement:
               - Effect: Allow
-                Action: [cloudformation:*, lambda:*, apigateway:*, iam:PassRole, iam:CreateRole, iam:PutRolePolicy, dynamodb:*, s3:*, cognito-idp:*, sqs:*, events:*, logs:*, cloudwatch:*, ssm:GetParameter, sns:DescribeTopic]
+                Action:
+                  - cloudformation:*
+                  - lambda:*
+                  - apigateway:*
+                  - dynamodb:*
+                  - s3:*
+                  - cognito-idp:*
+                  - sqs:*
+                  - events:*
+                  - logs:*
+                  - cloudwatch:*
+                  - states:*
+                  - sns:*
+                  - ssm:GetParameter
+                  - iam:PassRole
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:UpdateAssumeRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:GetRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:ListRolePolicies
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:ListAttachedRolePolicies
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:GetOpenIDConnectProvider
+                  - iam:CreateOpenIDConnectProvider
+                  - iam:DeleteOpenIDConnectProvider
+                  - iam:TagOpenIDConnectProvider
+                  - iam:UntagOpenIDConnectProvider
+                  - iam:UpdateOpenIDConnectProviderThumbprint
+                  - iam:AddClientIDToOpenIDConnectProvider
+                  - iam:RemoveClientIDFromOpenIDConnectProvider
                 Resource: '*'
 
 Outputs:
