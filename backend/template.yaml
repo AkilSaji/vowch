@@ -90,9 +90,6 @@ Globals:
         PUSH_GATEWAY_URL: !Ref PushGatewayUrl
         PUSH_GATEWAY_TOKEN: !Ref PushGatewayToken
         SSM_PREFIX: !Ref SsmPrefix
-        USER_POOL_ID: !Ref UserPool
-        USER_POOL_CLIENT_ID: !Ref UserPoolClient
-        WEBSOCKET_MANAGEMENT_ENDPOINT: !Sub 'https://${RealtimeApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
     Tracing: Active
   Api:
     Cors:
@@ -248,6 +245,9 @@ Resources:
     Properties:
       CodeUri: ./
       Handler: src/app.handler
+      Environment:
+        Variables:
+          WEBSOCKET_MANAGEMENT_ENDPOINT: !Sub 'https://${RealtimeApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
       Policies:
         - DynamoDBCrudPolicy: { TableName: !Ref VowchTable }
         - S3CrudPolicy: { BucketName: !Ref UploadBucketName }
@@ -267,6 +267,10 @@ Resources:
     Properties:
       CodeUri: ./
       Handler: src/realtime.authorize
+      Environment:
+        Variables:
+          USER_POOL_ID: !Ref UserPool
+          USER_POOL_CLIENT_ID: !Ref UserPoolClient
 
   RealtimeConnectionFunction:
     Type: AWS::Serverless::Function
@@ -384,6 +388,9 @@ Resources:
       CodeUri: ./
       Handler: src/notification-outbox.handler
       Timeout: 30
+      Environment:
+        Variables:
+          WEBSOCKET_MANAGEMENT_ENDPOINT: !Sub 'https://${RealtimeApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
       Policies:
         - DynamoDBCrudPolicy: { TableName: !Ref VowchTable }
         - Statement:
