@@ -274,6 +274,7 @@ Resources:
       Events:
         Health: { Type: HttpApi, Properties: { ApiId: !Ref VowchApi, Path: /health, Method: GET, Auth: { Authorizer: NONE } } }
         PublicRequest: { Type: HttpApi, Properties: { ApiId: !Ref VowchApi, Path: /v1/public/requests, Method: POST, Auth: { Authorizer: NONE } } }
+        CorsPreflight: { Type: HttpApi, Properties: { ApiId: !Ref VowchApi, Path: '/{proxy+}', Method: OPTIONS, Auth: { Authorizer: NONE } } }
         Api: { Type: HttpApi, Properties: { ApiId: !Ref VowchApi, Path: '/{proxy+}', Method: ANY } }
 
   RealtimeAuthorizerFunction:
