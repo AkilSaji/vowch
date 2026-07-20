@@ -1,0 +1,46 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Vowch secure upload and proof-review infrastructure'
+
+Parameters:
+  Environment: { Type: String, Default: dev }
+
+Resources:
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub 'vowch-uploads-${AWS::AccountId}-${Environment}'
+      BucketEncryption: { ServerSideEncryptionConfiguration: [{ ServerSideEncryptionByDefault: { SSEAlgorithm: AES256 } }] }
+      PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true }
+      VersioningConfiguration: { Status: Enabled }
+      LifecycleConfiguration:
+        Rules: [{ Id: AbortMultipartUploads, Status: Enabled, AbortIncompleteMultipartUpload: { DaysAfterInitiation: 2 } }]
+
+  UploadBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref UploadBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement: [{ Effect: Deny, Principal: '*', Action: 's3:*', Resource: [!GetAtt UploadBucket.Arn, !Sub '${UploadBucket.Arn}/*'], Condition: { Bool: { 'aws:SecureTransport': false } } }]
+
+
+  ProofReviewDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties: { MessageRetentionPeriod: 1209600 }
+  ProofReviewQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 120
+      RedrivePolicy: { deadLetterTargetArn: !GetAtt ProofReviewDeadLetterQueue.Arn, maxReceiveCount: 3 }
+
+  SecurityAlerts:
+    Type: AWS::SNS::Topic
+    Properties: { TopicName: !Sub 'vowch-security-${Environment}' }
+
+Outputs:
+  UploadBucket: { Value: !Ref UploadBucket }
+  ProofReviewQueueUrl: { Value: !Ref ProofReviewQueue }
+  SecurityAlertsTopicArn: { Value: !Ref SecurityAlerts }

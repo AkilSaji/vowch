@@ -1,0 +1,8 @@
+version = 0.1
+[default.deploy.parameters]
+stack_name = "vowch-dev"
+resolve_s3 = true
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+parameter_overrides = "Environment=dev PublicAppOrigin=http://localhost:3000 SsmPrefix=/vowch/dev PaymentWebhookSecret='' RazorpayKeyId='' RazorpayKeySecret='' GroqApiKey='' GroqModel=llama-3.3-70b-versatile GmailSmtpUser='' GmailAppPassword='' MapboxPublicToken=''"
+region = "ap-south-1"

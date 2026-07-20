@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vowch deployment bootstrap: alerts and GitHub OIDC'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+  GitHubOrg:
+    Type: String
+  GitHubRepo:
+    Type: String
+  GitHubBranch:
+    Type: String
+    Default: main
+  AlertEmail:
+    Type: String
+    Default: ''
+
+Resources:
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties: { TopicName: !Sub 'vowch-${Environment}-alerts' }
+  AlertSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlertEmail
+    Properties: { TopicArn: !Ref AlertTopic, Protocol: email, Endpoint: !Ref AlertEmail }
+
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+      ThumbprintList: [6938fd4d98bab03faabd5b6f8b9c6d4a3f0f3f5f]
+
+  GitHubDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub vowch-github-deploy-${Environment}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Federated: !Ref GitHubOidcProvider }
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${GitHubBranch}
+              StringEquals: { token.actions.githubusercontent.com:aud: sts.amazonaws.com }
+      Policies:
+        - PolicyName: VowchDeployment
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [cloudformation:*, lambda:*, apigateway:*, iam:PassRole, iam:CreateRole, iam:PutRolePolicy, dynamodb:*, s3:*, cognito-idp:*, sqs:*, events:*, logs:*, cloudwatch:*, ssm:GetParameter, sns:DescribeTopic]
+                Resource: '*'
+
+Outputs:
+  GitHubDeployRoleArn: { Value: !GetAtt GitHubDeployRole.Arn }
+  AlertTopicArn: { Value: !Ref AlertTopic }
+
+Conditions:
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, '']]

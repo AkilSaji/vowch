@@ -1,0 +1,10 @@
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+const table = process.env.TABLE_NAME;
+if (!table) throw new Error('TABLE_NAME is required');
+const db = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const now = new Date().toISOString();
+await db.send(new PutCommand({ TableName: table, Item: { pk: 'SYSTEM', sk: 'PASSPORT_COUNTER', value: 1 } }));
+await db.send(new PutCommand({ TableName: table, Item: { pk: `USER#${process.env.FOUNDER_USER_ID}`, sk: 'PROFILE', type: 'USER', userId: process.env.FOUNDER_USER_ID, displayName: 'Vowch Founder', primarySkill: 'Founder', cred: 1000, createdAt: now } }));
+await db.send(new PutCommand({ TableName: table, Item: { pk: `USER#${process.env.FOUNDER_USER_ID}`, sk: 'PASSPORT#0000001', type: 'PASSPORT', userId: process.env.FOUNDER_USER_ID, passportNo: '0000001', status: 'ACTIVE', cred: 1000, generation: 0, lineage: ['0000001'], chainHash: 'GENESIS', issuedAt: now } }));
+console.log('Founder seeded');

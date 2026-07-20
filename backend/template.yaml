@@ -1,0 +1,589 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Vowch single-environment serverless backend (no VPC)
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedPattern: '^[a-z0-9-]+$'
+  PublicAppOrigin:
+    Type: String
+    Default: http://localhost:3000
+  UploadBucketName:
+    Type: String
+    Default: ''
+  MapboxPublicToken:
+    Type: String
+    Default: ''
+    NoEcho: true
+  PaymentWebhookSecret:
+    Type: String
+    Default: ''
+    NoEcho: true
+  RazorpayKeyId:
+    Type: String
+    Default: ''
+    NoEcho: true
+  RazorpayKeySecret:
+    Type: String
+    Default: ''
+    NoEcho: true
+  GroqApiKey:
+    Type: String
+    Default: ''
+    NoEcho: true
+  GroqModel:
+    Type: String
+    Default: llama-3.3-70b-versatile
+    Description: Groq model used by the proof-review worker.
+  GmailSmtpUser:
+    Type: String
+    Default: ''
+  GmailAppPassword:
+    Type: String
+    Default: ''
+    NoEcho: true
+  MalwareScanUrl:
+    Type: String
+    Default: ''
+  MalwareScanToken:
+    Type: String
+    Default: ''
+    NoEcho: true
+  PushGatewayUrl:
+    Type: String
+    Default: ''
+  PushGatewayToken:
+    Type: String
+    Default: ''
+    NoEcho: true
+  SsmPrefix:
+    Type: String
+    Default: /vowch/dev
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Architectures: [arm64]
+    MemorySize: 512
+    Timeout: 15
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        PUBLIC_APP_ORIGIN: !Ref PublicAppOrigin
+        TABLE_NAME: !Ref VowchTable
+        UPLOAD_BUCKET: !Ref UploadBucketName
+        JOB_QUEUE_URL: !Ref JobQueue
+        MALWARE_SCAN_QUEUE_URL: !Ref MalwareScanQueue
+        EVENT_BUS_NAME: !Ref VowchEventBus
+        MAPBOX_PUBLIC_TOKEN: !Ref MapboxPublicToken
+        PAYMENT_WEBHOOK_SECRET: !Ref PaymentWebhookSecret
+        RAZORPAY_KEY_ID: !Ref RazorpayKeyId
+        RAZORPAY_KEY_SECRET: !Ref RazorpayKeySecret
+        GROQ_API_KEY: !Ref GroqApiKey
+        GROQ_MODEL: !Ref GroqModel
+        GMAIL_SMTP_USER: !Ref GmailSmtpUser
+        GMAIL_APP_PASSWORD: !Ref GmailAppPassword
+        MALWARE_SCAN_URL: !Ref MalwareScanUrl
+        MALWARE_SCAN_TOKEN: !Ref MalwareScanToken
+        PUSH_GATEWAY_URL: !Ref PushGatewayUrl
+        PUSH_GATEWAY_TOKEN: !Ref PushGatewayToken
+        SSM_PREFIX: !Ref SsmPrefix
+        USER_POOL_ID: !Ref UserPool
+        USER_POOL_CLIENT_ID: !Ref UserPoolClient
+        WEBSOCKET_MANAGEMENT_ENDPOINT: !Sub 'https://${RealtimeApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+    Tracing: Active
+  Api:
+    Cors:
+      AllowMethods: "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+      AllowHeaders: "Content-Type,Authorization,Idempotency-Key"
+      AllowOrigin: !Ref PublicAppOrigin
+
+Resources:
+  VowchApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref Environment
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+              audience: [!Ref UserPoolClient]
+            IdentitySource: "$request.header.Authorization"
+
+  VowchTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub vowch-${Environment}
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification: { PointInTimeRecoveryEnabled: true }
+      TimeToLiveSpecification: { AttributeName: expiresAt, Enabled: true }
+      SSESpecification: { SSEEnabled: true }
+      AttributeDefinitions:
+        - { AttributeName: pk, AttributeType: S }
+        - { AttributeName: sk, AttributeType: S }
+        - { AttributeName: gsi1pk, AttributeType: S }
+        - { AttributeName: gsi1sk, AttributeType: S }
+        - { AttributeName: gsi2pk, AttributeType: S }
+        - { AttributeName: gsi2sk, AttributeType: S }
+        - { AttributeName: gsi3pk, AttributeType: S }
+        - { AttributeName: gsi3sk, AttributeType: S }
+        - { AttributeName: gsi4pk, AttributeType: S }
+        - { AttributeName: gsi4sk, AttributeType: S }
+      KeySchema: [{ AttributeName: pk, KeyType: HASH }, { AttributeName: sk, KeyType: RANGE }]
+      GlobalSecondaryIndexes:
+        - IndexName: gsi1
+          KeySchema: [{ AttributeName: gsi1pk, KeyType: HASH }, { AttributeName: gsi1sk, KeyType: RANGE }]
+          Projection: { ProjectionType: ALL }
+        - IndexName: gsi2
+          KeySchema: [{ AttributeName: gsi2pk, KeyType: HASH }, { AttributeName: gsi2sk, KeyType: RANGE }]
+          Projection: { ProjectionType: ALL }
+        - IndexName: gsi3
+          KeySchema: [{ AttributeName: gsi3pk, KeyType: HASH }, { AttributeName: gsi3sk, KeyType: RANGE }]
+          Projection: { ProjectionType: ALL }
+        - IndexName: gsi4
+          KeySchema: [{ AttributeName: gsi4pk, KeyType: HASH }, { AttributeName: gsi4sk, KeyType: RANGE }]
+          Projection: { ProjectionType: ALL }
+
+  JobQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 90
+      MessageRetentionPeriod: 345600
+      RedrivePolicy: { deadLetterTargetArn: !GetAtt JobDeadLetterQueue.Arn, maxReceiveCount: 3 }
+
+  VowchEventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub 'vowch-${Environment}'
+
+  JobDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties: { MessageRetentionPeriod: 1209600 }
+
+  JobQueueRedrive:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues: [!Ref JobQueue]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement: [{ Effect: Allow, Principal: { Service: sqs.amazonaws.com }, Action: sqs:SendMessage, Resource: !GetAtt JobQueue.Arn }]
+
+  MalwareScanDeadLetterQueue:
+    Type: AWS::SQS::Queue
+    Properties: { MessageRetentionPeriod: 1209600 }
+  MalwareScanQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      VisibilityTimeout: 120
+      RedrivePolicy: { deadLetterTargetArn: !GetAtt MalwareScanDeadLetterQueue.Arn, maxReceiveCount: 3 }
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub vowch-users-${Environment}
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      LambdaConfig:
+        CreateAuthChallenge: !GetAtt CreateAuthChallengeFunction.Arn
+        DefineAuthChallenge: !GetAtt DefineAuthChallengeFunction.Arn
+        VerifyAuthChallengeResponse: !GetAtt VerifyAuthChallengeFunction.Arn
+      Policies: { PasswordPolicy: { MinimumLength: 12, RequireUppercase: false, RequireLowercase: false, RequireNumbers: false, RequireSymbols: false } }
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties: { UserPoolId: !Ref UserPool, GenerateSecret: false, ExplicitAuthFlows: [ALLOW_CUSTOM_AUTH, ALLOW_REFRESH_TOKEN_AUTH, ALLOW_USER_SRP_AUTH] }
+
+  SuperAdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: vowch-super-admin, UserPoolId: !Ref UserPool, Description: Full Vowch administration access }
+  TrustReviewerGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: vowch-trust-reviewer, UserPoolId: !Ref UserPool, Description: Identity, skill, trust, passport, and moderation review }
+  OpsReviewerGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: vowch-ops-reviewer, UserPoolId: !Ref UserPool, Description: Gig, proof, dispute, and operational review }
+  FinanceReviewerGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: vowch-finance-reviewer, UserPoolId: !Ref UserPool, Description: Payment and settlement review }
+  SupportViewerGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: { GroupName: vowch-support-viewer, UserPoolId: !Ref UserPool, Description: Read-only support access }
+
+  CreateAuthChallengeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/auth-triggers.createAuthChallenge
+
+  DefineAuthChallengeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/auth-triggers.defineAuthChallenge
+
+  VerifyAuthChallengeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/auth-triggers.verifyAuthChallenge
+
+  CreateAuthChallengePermission:
+    Type: AWS::Lambda::Permission
+    Properties: { Action: lambda:InvokeFunction, FunctionName: !Ref CreateAuthChallengeFunction, Principal: cognito-idp.amazonaws.com, SourceArn: !GetAtt UserPool.Arn }
+  DefineAuthChallengePermission:
+    Type: AWS::Lambda::Permission
+    Properties: { Action: lambda:InvokeFunction, FunctionName: !Ref DefineAuthChallengeFunction, Principal: cognito-idp.amazonaws.com, SourceArn: !GetAtt UserPool.Arn }
+  VerifyAuthChallengePermission:
+    Type: AWS::Lambda::Permission
+    Properties: { Action: lambda:InvokeFunction, FunctionName: !Ref VerifyAuthChallengeFunction, Principal: cognito-idp.amazonaws.com, SourceArn: !GetAtt UserPool.Arn }
+
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/app.handler
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref VowchTable }
+        - S3CrudPolicy: { BucketName: !Ref UploadBucketName }
+        - SQSSendMessagePolicy: { QueueName: !GetAtt JobQueue.QueueName }
+        - SQSSendMessagePolicy: { QueueName: !GetAtt MalwareScanQueue.QueueName }
+        - Statement:
+            - { Effect: Allow, Action: ssm:GetParameter, Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SsmPrefix}/*' }
+            - { Effect: Allow, Action: events:PutEvents, Resource: !GetAtt VowchEventBus.Arn }
+            - { Effect: Allow, Action: execute-api:ManageConnections, Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RealtimeApi}/${Environment}/POST/@connections/*' }
+      Events:
+        Health: { Type: HttpApi, Properties: { ApiId: !Ref VowchApi, Path: /health, Method: GET, Auth: { Authorizer: NONE } } }
+        PublicRequest: { Type: HttpApi, Properties: { ApiId: !Ref VowchApi, Path: /v1/public/requests, Method: POST, Auth: { Authorizer: NONE } } }
+        Api: { Type: HttpApi, Properties: { ApiId: !Ref VowchApi, Path: '/{proxy+}', Method: ANY } }
+
+  RealtimeAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/realtime.authorize
+
+  RealtimeConnectionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/realtime.handler
+      Policies: [{ DynamoDBCrudPolicy: { TableName: !Ref VowchTable } }]
+
+  RealtimeApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub 'vowch-realtime-${Environment}'
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: '$request.body.action'
+
+  RealtimeIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref RealtimeApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RealtimeConnectionFunction.Arn}/invocations'
+
+  RealtimeAuthorizer:
+    Type: AWS::ApiGatewayV2::Authorizer
+    Properties:
+      ApiId: !Ref RealtimeApi
+      Name: CognitoJwtAuthorizer
+      AuthorizerType: REQUEST
+      IdentitySource: ['route.request.header.Authorization']
+      AuthorizerUri: !Sub 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${RealtimeAuthorizerFunction.Arn}/invocations'
+
+  RealtimeConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: { ApiId: !Ref RealtimeApi, RouteKey: '$connect', AuthorizationType: CUSTOM, AuthorizerId: !Ref RealtimeAuthorizer, Target: !Join ['/', ['integrations', !Ref RealtimeIntegration]] }
+  RealtimeDisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: { ApiId: !Ref RealtimeApi, RouteKey: '$disconnect', AuthorizationType: NONE, Target: !Join ['/', ['integrations', !Ref RealtimeIntegration]] }
+  RealtimeDefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties: { ApiId: !Ref RealtimeApi, RouteKey: '$default', AuthorizationType: CUSTOM, AuthorizerId: !Ref RealtimeAuthorizer, Target: !Join ['/', ['integrations', !Ref RealtimeIntegration]] }
+  RealtimeStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties: { ApiId: !Ref RealtimeApi, StageName: !Ref Environment, AutoDeploy: true }
+  RealtimeIntegrationPermission:
+    Type: AWS::Lambda::Permission
+    Properties: { Action: lambda:InvokeFunction, FunctionName: !Ref RealtimeConnectionFunction, Principal: apigateway.amazonaws.com }
+  RealtimeAuthorizerPermission:
+    Type: AWS::Lambda::Permission
+    Properties: { Action: lambda:InvokeFunction, FunctionName: !Ref RealtimeAuthorizerFunction, Principal: apigateway.amazonaws.com }
+
+  ProofReviewWorker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/worker.proofReview
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref VowchTable }
+        - S3ReadPolicy: { BucketName: !Ref UploadBucketName }
+        - Statement: [{ Effect: Allow, Action: ssm:GetParameter, Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SsmPrefix}/*' }]
+      Events:
+        Queue: { Type: SQS, Properties: { Queue: !GetAtt JobQueue.Arn, BatchSize: 5, FunctionResponseTypes: [ReportBatchItemFailures] } }
+
+  MalwareScanWorker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/malware-scan.handler
+      Timeout: 90
+      Policies:
+        - S3ReadPolicy: { BucketName: !Ref UploadBucketName }
+        - SQSSendMessagePolicy: { QueueName: !GetAtt JobQueue.QueueName }
+      Events:
+        Queue: { Type: SQS, Properties: { Queue: !GetAtt MalwareScanQueue.Arn, BatchSize: 5, FunctionResponseTypes: [ReportBatchItemFailures] } }
+
+  AutoReleaseWorker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/auto-release.handler
+      Timeout: 30
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref VowchTable }
+        - Statement: [{ Effect: Allow, Action: ssm:GetParameter, Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SsmPrefix}/*' }]
+      Events:
+        Schedule:
+          Type: Schedule
+          Properties: { Schedule: rate(15 minutes), Enabled: true }
+
+  PaymentReconciliationWorker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/reconcile.handler
+      Timeout: 30
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref VowchTable }
+        - Statement: [{ Effect: Allow, Action: ssm:GetParameter, Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SsmPrefix}/*' }]
+      Events:
+        Schedule: { Type: Schedule, Properties: { Schedule: rate(30 minutes), Enabled: true } }
+
+  NotificationRetryWorker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/notification-retry.handler
+      Timeout: 30
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref VowchTable }
+      Events:
+        Schedule: { Type: Schedule, Properties: { Schedule: rate(15 minutes), Enabled: true } }
+
+  NotificationOutboxWorker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/notification-outbox.handler
+      Timeout: 30
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref VowchTable }
+        - Statement:
+            - { Effect: Allow, Action: execute-api:ManageConnections, Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RealtimeApi}/${Environment}/POST/@connections/*' }
+      Events:
+        Schedule: { Type: Schedule, Properties: { Schedule: rate(1 minute), Enabled: true } }
+
+  TrustSentinelWorker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/trust-sentinel.handler
+      Timeout: 30
+      Policies: [{ DynamoDBCrudPolicy: { TableName: !Ref VowchTable } }]
+
+  GigExpiryWorker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/gig-expiry.handler
+      Timeout: 30
+      Policies: [{ DynamoDBCrudPolicy: { TableName: !Ref VowchTable } }]
+      Events:
+        Schedule: { Type: Schedule, Properties: { Schedule: rate(15 minutes), Enabled: true } }
+
+  RatingRevealWorker:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/rating-reveal.handler
+      Timeout: 30
+      Policies: [{ DynamoDBCrudPolicy: { TableName: !Ref VowchTable } }]
+      Events:
+        Schedule: { Type: Schedule, Properties: { Schedule: rate(15 minutes), Enabled: true } }
+
+  TrustWorkflow:
+    Type: AWS::Serverless::StateMachine
+    Properties:
+      Name: !Sub 'vowch-trust-${Environment}'
+      Definition:
+        StartAt: RunSentinel
+        States:
+          RunSentinel:
+            Type: Task
+            Resource: !GetAtt TrustSentinelWorker.Arn
+            ResultPath: $.sentinel
+            Retry: [{ ErrorEquals: [Lambda.ServiceException, Lambda.TooManyRequestsException], IntervalSeconds: 5, MaxAttempts: 3, BackoffRate: 2 }]
+            End: true
+      Policies:
+        - Statement: [{ Effect: Allow, Action: logs:CreateLogDelivery, Resource: '*' }]
+        - LambdaInvokePolicy: { FunctionName: !Ref TrustSentinelWorker }
+      Events:
+        SentinelSchedule:
+          Type: Schedule
+          Properties: { Schedule: rate(15 minutes), Enabled: true }
+        PassportMinted:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref VowchEventBus
+            Pattern:
+              source: [vowch.api]
+              detail-type: [passport.minted]
+
+  ApiErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Vowch API Lambda errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{ Name: FunctionName, Value: !Ref ApiFunction }]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  ProofWorkerErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Vowch proof-review worker errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{ Name: FunctionName, Value: !Ref ProofReviewWorker }]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  QueueBacklogAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Vowch proof-review queue backlog
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions: [{ Name: QueueName, Value: !GetAtt JobQueue.QueueName }]
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 20
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  NotificationOutboxErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Vowch notification outbox worker errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{ Name: FunctionName, Value: !Ref NotificationOutboxWorker }]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  PaymentReconciliationErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Vowch refund and payment retry worker errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{ Name: FunctionName, Value: !Ref PaymentReconciliationWorker }]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  TrustSentinelErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Vowch Trust Sentinel workflow failures
+      Namespace: AWS/States
+      MetricName: ExecutionsFailed
+      Dimensions: [{ Name: StateMachineArn, Value: !Ref TrustWorkflow }]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  WebSocketErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Vowch realtime connection Lambda errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions: [{ Name: FunctionName, Value: !Ref RealtimeConnectionFunction }]
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  JobDeadLetterAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Vowch proof job dead-letter messages
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions: [{ Name: QueueName, Value: !GetAtt JobDeadLetterQueue.QueueName }]
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  MalwareScanDeadLetterAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Vowch malware scan dead-letter messages
+      Namespace: AWS/SQS
+      MetricName: ApproximateNumberOfMessagesVisible
+      Dimensions: [{ Name: QueueName, Value: !GetAtt MalwareScanDeadLetterQueue.QueueName }]
+      Statistic: Maximum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  VowchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub 'vowch-${Environment}'
+      DashboardBody: !Sub |
+        {"widgets":[{"type":"metric","width":12,"height":6,"properties":{"title":"API errors","metrics":[["AWS/Lambda","Errors","FunctionName","${ApiFunction}"]],"period":300,"stat":"Sum"}},{"type":"metric","width":12,"height":6,"properties":{"title":"Proof worker errors","metrics":[["AWS/Lambda","Errors","FunctionName","${ProofReviewWorker}"]],"period":300,"stat":"Sum"}}]}
+
+Outputs:
+  ApiUrl: { Value: !Sub 'https://${VowchApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}' }
+  RealtimeWebSocketUrl: { Value: !Sub 'wss://${RealtimeApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}' }
+  TableName: { Value: !Ref VowchTable }
+  UploadBucketName: { Value: !Ref UploadBucketName }
+  UserPoolId: { Value: !Ref UserPool }
+  UserPoolClientId: { Value: !Ref UserPoolClient }

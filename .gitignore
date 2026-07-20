@@ -1,0 +1,23 @@
+# Node and build outputs
+node_modules/
+dist/
+coverage/
+.aws-sam/
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local project copies and generated Stitch assets are not part of the backend deployment repository
+project-backend-format/
+stitch_vowch_trusted_gig_marketplace/
+vouch-home-feed.png

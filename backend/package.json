@@ -1,0 +1,28 @@
+{
+  "name": "vowch-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "test:integration": "node --test tests/*.integration.test.mjs",
+    "test:admin:integration": "node --test tests/admin-api.integration.test.mjs",
+    "lint": "node --check src/app.mjs && node --check src/auth-triggers.mjs && node --check src/email.mjs && node --check src/notification-outbox.mjs && node --check src/notification-retry.mjs && node --check src/worker.mjs && node --check src/auth/permissions.mjs && node --check src/admin/audit.mjs",
+    "seed:founder": "node scripts/seed-founder.mjs",
+    "migrate": "node scripts/migrate.mjs",
+    "migrate:gigs": "node scripts/backfill-gig-indexes.mjs",
+    "migrate:worker-indexes": "node scripts/backfill-worker-indexes.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.826.0",
+    "@aws-sdk/client-dynamodb": "^3.826.0",
+    "@aws-sdk/client-eventbridge": "^3.826.0",
+    "@aws-sdk/client-s3": "^3.826.0",
+    "@aws-sdk/client-sqs": "^3.826.0",
+    "@aws-sdk/client-ssm": "^3.826.0",
+    "@aws-sdk/lib-dynamodb": "^3.826.0",
+    "@aws-sdk/s3-request-presigner": "^3.826.0",
+    "aws-jwt-verify": "^5.1.1",
+    "nodemailer": "^9.0.3",
+    "pdf-parse": "^1.1.1"
+  }
+}

@@ -1,0 +1,55 @@
+name: Vowch full infrastructure and application deployment
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - uses: aws-actions/setup-sam@v2
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Validate CloudFormation templates
+        run: |
+          aws cloudformation validate-template --template-body file://infra/bootstrap.yaml
+          aws cloudformation validate-template --template-body file://infra/security.yaml
+          aws cloudformation validate-template --template-body file://backend/template.yaml
+      - name: Install and test backend
+        run: npm ci --prefix backend && npm test --prefix backend && npm run lint --prefix backend
+      - name: Deploy bootstrap stack
+        run: |
+          aws cloudformation deploy --template-file infra/bootstrap.yaml --stack-name vowch-bootstrap-dev --capabilities CAPABILITY_NAMED_IAM --parameter-overrides Environment=dev GitHubOrg=${{ github.repository_owner }} GitHubRepo=${{ github.event.repository.name }} AlertEmail=${{ vars.ALERT_EMAIL }}
+      - name: Deploy security stack
+        run: sam deploy --template-file infra/security.yaml --stack-name vowch-security-dev --capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides Environment=dev
+      - name: Resolve secure upload bucket
+        run: echo "UPLOAD_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name vowch-security-dev --query \"Stacks[0].Outputs[?OutputKey=='UploadBucket'].OutputValue\" --output text)" >> $GITHUB_ENV
+      - name: Build and deploy application
+        run: sam build --template-file backend/template.yaml && sam deploy --template-file backend/template.yaml --stack-name vowch-dev --capabilities CAPABILITY_IAM --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --parameter-overrides Environment=dev PublicAppOrigin=${{ vars.PUBLIC_APP_ORIGIN }} SsmPrefix=/vowch/dev PaymentWebhookSecret=${{ secrets.PAYMENT_WEBHOOK_SECRET }} RazorpayKeyId=${{ secrets.RAZORPAY_KEY_ID }} RazorpayKeySecret=${{ secrets.RAZORPAY_KEY_SECRET }} GroqApiKey=${{ secrets.GROQ_API_KEY }} GmailSmtpUser=${{ secrets.GMAIL_SMTP_USER }} GmailAppPassword=${{ secrets.GMAIL_APP_PASSWORD }} GroqModel=${{ vars.GROQ_MODEL || 'llama-3.3-70b-versatile' }} UploadBucketName=${{ env.UPLOAD_BUCKET_NAME }} MalwareScanUrl=${{ secrets.MALWARE_SCAN_URL }} MalwareScanToken=${{ secrets.MALWARE_SCAN_TOKEN }} PushGatewayUrl=${{ secrets.PUSH_GATEWAY_URL }} PushGatewayToken=${{ secrets.PUSH_GATEWAY_TOKEN }}
+      - name: Smoke test API
+        run: |
+          API_URL=$(aws cloudformation describe-stacks --stack-name vowch-dev --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" --output text)
+          curl --fail --retry 5 --retry-delay 5 "$API_URL/health"
+          echo "VOWCH_API_URL=$API_URL" >> $GITHUB_ENV
+      - name: Smoke test admin API
+        if: ${{ secrets.COGNITO_ADMIN_TEST_TOKEN != '' }}
+        env:
+          AWS_INTEGRATION: 'true'
+          COGNITO_ADMIN_TEST_TOKEN: ${{ secrets.COGNITO_ADMIN_TEST_TOKEN }}
+        run: npm run test:admin:integration --prefix backend
+      - name: Backfill worker query indexes
+        run: |
+          export TABLE_NAME=$(aws cloudformation describe-stacks --stack-name vowch-dev --query "Stacks[0].Outputs[?OutputKey=='TableName'].OutputValue" --output text)
+          npm run migrate:worker-indexes --prefix backend

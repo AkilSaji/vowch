@@ -1,0 +1,66 @@
+openapi: 3.0.3
+info: { title: Vowch API, version: 1.0.0, description: Authenticated Vowch marketplace, trust, payments, and community API. }
+servers: [{ url: https://api.example.com }]
+paths:
+  /health: { get: { security: [], responses: { '200': { description: Healthy } } } }
+  /v1/public/requests: { post: { security: [], responses: { '201': { description: Request captured } } } }
+  /v1/me: { get: { responses: { '200': { description: Profile } } }, put: { responses: { '200': { description: Profile updated } } } }
+  /v1/uploads/presign: { post: { responses: { '200': { description: Short-lived S3 upload URL for an authenticated member file } } } }
+  /v1/onboarding/complete: { post: { responses: { '202': { description: Identity review submitted } } } }
+  /v1/invites/preview: { get: { responses: { '200': { description: Invite preview } } } }
+  /v1/invites: { get: { responses: { '200': { description: Invites } } }, post: { responses: { '201': { description: Invite issued } } } }
+  /v1/passports: { get: { responses: { '200': { description: Passports } } } }
+  /v1/notifications: { get: { responses: { '200': { description: Notifications } } } }
+  /v1/notifications/{notificationId}/read: { patch: { parameters: [{ $ref: '#/components/parameters/notificationId' }], responses: { '200': { description: Notification read } } } }
+  /v1/notification-preferences: { get: { responses: { '200': { description: Preferences } } }, put: { responses: { '200': { description: Preferences updated } } } }
+  /v1/push/devices: { post: { responses: { '201': { description: Device registered } } } }
+  /v1/push/devices/{tokenHash}: { delete: { parameters: [{ $ref: '#/components/parameters/tokenHash' }], responses: { '204': { description: Device disabled } } } }
+  /v1/gigs: { get: { responses: { '200': { description: Open gigs } } }, post: { responses: { '201': { description: Gig created } } } }
+  /v1/gigs/{gigId}: { get: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '200': { description: Gig } } }, patch: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '200': { description: Gig updated } } } }
+  /v1/gigs/{gigId}/matches: { get: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '200': { description: Candidate matches } } } }
+  /v1/gigs/{gigId}/candidates: { post: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '200': { description: Candidate action completed } } } }
+  /v1/gigs/{gigId}/apply: { post: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '201': { description: Application created } } } }
+  /v1/gigs/{gigId}/offer: { post: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '200': { description: Offer action completed } } } }
+  /v1/gigs/{gigId}/{action}: { post: { parameters: [{ $ref: '#/components/parameters/gigId' }, { name: action, in: path, required: true, schema: { type: string, enum: [assign, deliver, approve, dispute, cancel] } }], responses: { '200': { description: Gig state changed } } } }
+  /v1/gigs/{gigId}/messages: { get: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '200': { description: Messages } } }, post: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '201': { description: Message created } } } }
+  /v1/gigs/{gigId}/delivery: { post: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '201': { description: Delivery submitted } } } }
+  /v1/gigs/{gigId}/deliveries: { get: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '200': { description: Deliveries } } } }
+  /v1/gigs/{gigId}/rating: { post: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '201': { description: Rating submitted } } } }
+  /v1/payments/webhook: { post: { security: [], responses: { '200': { description: Webhook accepted } } } }
+  /v1/payments/intents: { post: { responses: { '201': { description: Payment intent created } } } }
+  /v1/payments/orders: { post: { responses: { '201': { description: Razorpay order created } } } }
+  /v1/payments/{paymentId}/{action}: { post: { parameters: [{ $ref: '#/components/parameters/paymentId' }, { name: action, in: path, required: true, schema: { type: string, enum: [release, refund] } }], responses: { '202': { description: Payment settlement started } } } }
+  /v1/payments/{paymentId}/ledger: { get: { parameters: [{ $ref: '#/components/parameters/paymentId' }], responses: { '200': { description: Ledger events } } } }
+  /v1/communities: { get: { responses: { '200': { description: Communities } } }, post: { responses: { '201': { description: Community created } } } }
+  /v1/communities/{communityId}/join: { post: { parameters: [{ $ref: '#/components/parameters/communityId' }], responses: { '201': { description: Membership created } } } }
+  /v1/communities/{communityId}/members/{memberId}/role: { patch: { parameters: [{ $ref: '#/components/parameters/communityId' }, { $ref: '#/components/parameters/memberId' }], responses: { '200': { description: Community role updated } } } }
+  /v1/house: { get: { responses: { '200': { description: House members } } } }
+  /v1/house/tree: { get: { responses: { '200': { description: House graph } } } }
+  /v1/house/stats: { get: { responses: { '200': { description: House statistics } } } }
+  /v1/house/health: { get: { responses: { '200': { description: House health } } } }
+  /v1/admin/trust-cases: { get: { responses: { '200': { description: Trust cases } } }, post: { responses: { '201': { description: Trust case created } } } }
+  /v1/admin/trust-cases/{caseId}: { patch: { parameters: [{ $ref: '#/components/parameters/caseId' }], responses: { '200': { description: Trust case resolved } } } }
+  /v1/admin/trust-cases/{caseId}/assign: { post: { parameters: [{ $ref: '#/components/parameters/caseId' }], responses: { '200': { description: Trust case assigned } } } }
+  /v1/admin/identity-reviews/{reviewId}/assign: { post: { responses: { '200': { description: Identity review assigned } } } }
+  /v1/admin/skill-reviews/{reviewId}/assign: { post: { responses: { '200': { description: Skill review assigned } } } }
+  /v1/admin/disputes: { get: { responses: { '200': { description: Disputed gigs queue } } } }
+  /v1/admin/dashboard/summary: { get: { responses: { '200': { description: Admin operational queue counts } } } }
+  /v1/admin/dashboard/activity: { get: { responses: { '200': { description: Recent audited admin activity } } } }
+  /v1/admin/users: { get: { responses: { '200': { description: Paginated member directory } } } }
+  /v1/admin/users/{userId}: { get: { responses: { '200': { description: Consolidated member profile } } } }
+  /v1/admin/gigs: { get: { responses: { '200': { description: Paginated gig directory } } } }
+  /v1/admin/gigs/{gigId}: { get: { parameters: [{ $ref: '#/components/parameters/gigId' }], responses: { '200': { description: Gig operations detail } } } }
+  /v1/admin/payments: { get: { responses: { '200': { description: Paginated payment directory } } } }
+  /v1/admin/payments/{paymentId}: { get: { parameters: [{ $ref: '#/components/parameters/paymentId' }], responses: { '200': { description: Payment and ledger detail } } } }
+  /v1/admin/notification-delivery: { get: { responses: { '200': { description: Notification delivery diagnostics } } } }
+components:
+  securitySchemes: { cognito: { type: http, scheme: bearer, bearerFormat: JWT } }
+  parameters:
+    gigId: { name: gigId, in: path, required: true, schema: { type: string } }
+    paymentId: { name: paymentId, in: path, required: true, schema: { type: string } }
+    notificationId: { name: notificationId, in: path, required: true, schema: { type: string } }
+    tokenHash: { name: tokenHash, in: path, required: true, schema: { type: string } }
+    communityId: { name: communityId, in: path, required: true, schema: { type: string } }
+    memberId: { name: memberId, in: path, required: true, schema: { type: string } }
+    caseId: { name: caseId, in: path, required: true, schema: { type: string } }
+security: [{ cognito: [] }]
