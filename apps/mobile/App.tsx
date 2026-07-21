@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Animated,
@@ -71,7 +71,7 @@ import { colors, radius } from "./src/theme";
 import type { Gig, Screen } from "./src/types";
 import { Onboarding } from "./src/onboarding";
 
-const money = (paise: number) => `$${(paise / 100).toFixed(0)}`;
+const money = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 const lucideIcons: Record<string, any> = {
   "add-circle": PlusCircle,
   "arrow-back": ArrowLeft,
@@ -119,12 +119,10 @@ function VowchAppFlow6() {
   const [memberProfile, setMemberProfile] = useState<any>(null);
   const [onboarded, setOnboarded] = useState(false);
   const [guestBrowsing, setGuestBrowsing] = useState(false);
-  useEffect(() => {
-    api
-      .gigs()
-      .then(setGigs)
-      .catch(() => {});
+  const loadGigs = useCallback(() => {
+    void api.gigs().then(setGigs).catch(() => {});
   }, []);
+  useEffect(loadGigs, [loadGigs]);
   useEffect(() => {
     const sub = BackHandler.addEventListener("hardwareBackPress", () => {
       if (guestBrowsing) {
@@ -261,7 +259,11 @@ function VowchAppFlow6() {
           backgroundColor={colors.background}
         />
         <Onboarding
-          onComplete={() => { setOnboarded(true); void api.profile().then(setMemberProfile).catch(() => {}); }}
+          onComplete={() => {
+            setOnboarded(true);
+            void api.profile().then(setMemberProfile).catch(() => {});
+            loadGigs();
+          }}
           onBrowse={() => setGuestBrowsing(true)}
         />
       </View>
@@ -406,6 +408,7 @@ function PassportHub({ setScreen, profile }: { setScreen: (screen: Screen) => vo
     >
       <Header title="Vowch" subtitle="YOUR SKILL PASSPORT" />
       <SkillPassportCard profile={profile} />
+      {/* Replaced by the interactive passport card above. */}
       {false && (
       <LinearGradient
         colors={["#711126", "#BE1738"]}
@@ -1235,10 +1238,10 @@ function EmptyHome({ setScreen }: { setScreen: (screen: Screen) => void }) {
 function WalletNew({ onBack }: { onBack: () => void }) {
   const [withdraw, setWithdraw] = useState(false);
   const rows = [
-    ["Project completion: UI design", "+$1,200.00", "Paid"],
-    ["Bank withdrawal", "-$500.00", "Withdrawn"],
-    ["Security deposit: Local gig", "+$350.00", "Pending"],
-    ["Referral bonus: Vowch Pro", "+$50.00", "Paid"],
+    ["Project completion: UI design", "+₹1,200", "Paid"],
+    ["Bank withdrawal", "-₹500", "Withdrawn"],
+    ["Security deposit: Local gig", "+₹350", "Pending"],
+    ["Referral bonus: Vowch Pro", "+₹50", "Paid"],
   ];
   return (
     <ScrollView
@@ -1259,7 +1262,7 @@ function WalletNew({ onBack }: { onBack: () => void }) {
       >
         <Text style={packStyles.balanceLabel}>AVAILABLE BALANCE</Text>
         <Text style={packStyles.balanceValue}>
-          $2,450.80 <Text style={packStyles.usd}>USD</Text>
+          ₹2,450.80 <Text style={packStyles.usd}>INR</Text>
         </Text>
         <Pressable
           style={packStyles.withdraw}
@@ -1285,7 +1288,7 @@ function WalletNew({ onBack }: { onBack: () => void }) {
         <View style={packStyles.withdrawNotice}>
           {icon("checkmark-circle", 20, colors.success)}
           <Text style={packStyles.withdrawTextDark}>
-            Your $500 withdrawal is on its way.
+            Your ₹500 withdrawal is on its way.
           </Text>
         </View>
       )}
@@ -1303,7 +1306,7 @@ function WalletNew({ onBack }: { onBack: () => void }) {
       <View style={packStyles.paymentCard}>
         {icon("landmark-outline", 25, colors.primary)}
         <View>
-          <Text style={styles.posterName}>Chase Checking</Text>
+          <Text style={styles.posterName}>HDFC Bank account</Text>
           <Text style={styles.posterMeta}>Bank account •••• 8810</Text>
         </View>
       </View>
@@ -1837,10 +1840,10 @@ function ChatNew({
       <View style={flowStyles.jobBar}>
         <View>
           <Text style={flowStyles.jobLabel}>JOB TITLE</Text>
-          <Text style={styles.posterName}>Lawn maintenance</Text>
+          <Text style={styles.posterName}>Home maintenance</Text>
         </View>
         <View style={flowStyles.pricePill}>
-          <Text style={flowStyles.pricePillText}>Agreed price: $45.00</Text>
+          <Text style={flowStyles.pricePillText}>Agreed price: ₹450</Text>
         </View>
       </View>
       <ScrollView
@@ -1866,7 +1869,7 @@ function ChatNew({
         <View style={[flowStyles.bubble, flowStyles.bubbleOther]}>
           <Text style={flowStyles.bubbleOtherText}>
             2 PM is perfect. No problem about the overgrowth. I’ve got a
-            heavy-duty mower. $45 covers the whole property.
+            heavy-duty mower. ₹450 covers the whole property.
           </Text>
         </View>
         <View style={[flowStyles.bubble, flowStyles.bubbleMine]}>
@@ -1886,7 +1889,7 @@ function ChatNew({
           </View>
           <Text style={flowStyles.bookingTitle}>Booking confirmed</Text>
           <Text style={styles.formHint}>
-            Payment of $45.00 is secured in Vowch Escrow
+            Payment of ₹450 is secured in Vowch Escrow
           </Text>
           <Pressable style={flowStyles.receipt} onPress={onTrack}>
             <Text style={flowStyles.receiptText}>Track this job</Text>
@@ -2582,7 +2585,7 @@ function ApplyForGig({
     if (!Number.isFinite(amount) || amount < 100)
       return Alert.alert(
         "Add a valid rate",
-        "Enter a proposed amount of at least $1.",
+        "Enter a proposed amount of at least ₹1.",
       );
     setSubmitting(true);
     try {
@@ -2687,7 +2690,7 @@ function ApplyForGig({
           multiline
         />
         <Field
-          label="Your proposed rate (USD)"
+          label="Your proposed rate (INR)"
           value={rate}
           onChangeText={setRate}
           placeholder="25"
@@ -2841,10 +2844,10 @@ function GigDashboard({
                 fontSize: 37,
               }}
             >
-              $1,240
+              ₹1,240
             </Text>
             <Text style={{ color: "#fff", fontFamily: "Baloo2_500Medium" }}>
-              + $180 this month
+              + ₹180 this month
             </Text>
           </View>
           {icon("wallet-outline", 34, "#fff")}
@@ -2970,7 +2973,7 @@ function JobTracking({ onBack }: { onBack: () => void }) {
         </View>
         <Pill tone="red">MOVING HELP</Pill>
         <Text style={styles.gigTitle}>Help Sarah move a sofa</Text>
-        <Text style={styles.formHint}>Fort Greene, Brooklyn · $40 fixed</Text>
+        <Text style={styles.formHint}>Indiranagar, Bengaluru · ₹400 fixed</Text>
         <View style={{ marginTop: 22 }}>
           {labels.map((label, index) => (
             <View
@@ -3196,7 +3199,7 @@ function Home({
           <Text style={styles.featureTitle}>
             Delivery driver needed locally
           </Text>
-          <Text style={styles.featurePrice}>$22/hr</Text>
+          <Text style={styles.featurePrice}>₹220/hr</Text>
           <Text style={styles.gigDescription} numberOfLines={2}>
             Morning shift · Van preferred
           </Text>
@@ -3614,7 +3617,7 @@ function Create({
     )
       return Alert.alert(
         "Add logistics",
-        "Enter a location and a budget greater than $0.",
+        "Enter a location and a budget greater than ₹0.",
       );
     setStep(step + 1);
   };
@@ -3852,7 +3855,7 @@ function Create({
               placeholder="Your neighbourhood"
             />
             <Field
-              label="Budget (USD)"
+              label="Budget (INR)"
               value={budget}
               onChangeText={setBudget}
               placeholder="0.00"
@@ -4748,7 +4751,7 @@ const exploreStyles = StyleSheet.create({
 const houseStyles = StyleSheet.create({
   scroll: { paddingBottom: 32 },
   passportWrap: { marginBottom: 22, marginTop: 4 },
-  passportTilt: { height: 238, position: "relative" },
+  passportTilt: { aspectRatio: 1.586, position: "relative", width: "100%" },
   skillPassportFace: {
     backfaceVisibility: "hidden",
     borderRadius: 26,

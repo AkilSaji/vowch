@@ -17,10 +17,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
-import MapView, { Marker, UrlTile } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "./api";
 import { mobileAuth } from "./cognito";
+import { LocationMapPreview } from "./location-map-preview";
 import { colors, radius } from "./theme";
 
 type Stage =
@@ -87,9 +87,11 @@ function Logo() {
 function ArrowButton({
   label,
   onPress,
+  disabled = false,
 }: {
   label: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const pressIn = () =>
@@ -106,9 +108,10 @@ function ArrowButton({
     >
       <Pressable
         onPress={onPress}
+        disabled={disabled}
         onPressIn={pressIn}
         onPressOut={pressOut}
-        style={styles.primaryButton}
+        style={[styles.primaryButton, disabled && { opacity: 0.58 }]}
       >
         <Text style={styles.primaryButtonText}>{label}</Text>
         <Ionicons name="arrow-forward" size={23} color="#fff" />
@@ -124,10 +127,11 @@ export function Onboarding({
   onComplete: () => void;
   onBrowse?: () => void;
 }) {
-  const [stage, setStage] = useState<Stage>("splash");
+  const [stage, setStage] = useState<Stage>("signup");
   const [page, setPage] = useState(0);
   const [authEmail, setAuthEmail] = useState("");
   const [authSession, setAuthSession] = useState("");
+  const [resending, setResending] = useState(false);
   const [direction, setDirection] = useState(1);
   const transition = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -178,40 +182,24 @@ export function Onboarding({
       Alert.alert("That code did not work", error instanceof Error ? error.message : "Request another Vowch code and try again.");
     }
   };
-  const current =
-    stage === "welcome" ? (
-      <Welcome
-        onStart={() => go("slides")}
-        onLogin={() => go("signup")}
-        onBrowse={onBrowse}
-      />
-    ) : stage === "splash" ? (
-      <Splash onDone={() => go("welcome")} />
-    ) : stage === "slides" ? (
-      <Slides
-        page={page}
-        setPage={setPage}
-        onSkip={() => go("signup")}
-        onDone={() => go("signup")}
-      />
-    ) : stage === "signup" ? (
+  const resendEmailOtp = async () => {
+    if (!authEmail || resending) return;
+    setResending(true);
+    try {
+      setAuthSession(await mobileAuth.startOtp(authEmail));
+      Alert.alert("New code sent", `We sent a fresh Vowch code to ${authEmail}.`);
+    } catch (error) {
+      Alert.alert("Could not resend your code", error instanceof Error ? error.message : "Please try again.");
+    } finally {
+      setResending(false);
+    }
+  };
+  const current = stage === "signup" ? (
       <SignupWithRecovery
-        onBack={() => go("slides", true)}
         onDone={startEmailOtp}
-        onForgot={() => go("forgot")}
-      />
-    ) : stage === "forgot" ? (
-      <ForgotPassword
-        onBack={() => go("signup", true)}
-        onDone={() => go("resetCode")}
-      />
-    ) : stage === "resetCode" ? (
-      <ResetCode
-        onBack={() => go("forgot", true)}
-        onDone={() => go("signup")}
       />
     ) : stage === "otp" ? (
-      <Otp email={authEmail} onBack={() => go("signup", true)} onDone={verifyEmailOtp} />
+      <Otp email={authEmail} onBack={() => go("signup", true)} onDone={verifyEmailOtp} onResend={resendEmailOtp} resending={resending} />
     ) : (
       <ProfileSetup onBack={() => go("otp", true)} onDone={onComplete} />
     );
@@ -497,7 +485,7 @@ function SocialButton({
   );
 }
 
-function Otp({ email, onBack, onDone }: { email: string; onBack: () => void; onDone: (code: string) => void }) {
+function Otp({ email, onBack, onDone, onResend, resending }: { email: string; onBack: () => void; onDone: (code: string) => void; onResend: () => void; resending: boolean }) {
   const [code, setCode] = useState("");
   const input = useRef<TextInput>(null);
   const verify = () => {
@@ -548,9 +536,11 @@ function Otp({ email, onBack, onDone }: { email: string; onBack: () => void; onD
           maxLength={6}
           style={styles.hiddenInput}
         />
-        <Text style={styles.resend}>
-          Didn&apos;t receive code? <Text style={styles.termsLink}>Resend</Text>
-        </Text>
+        <Pressable onPress={onResend} disabled={resending} hitSlop={12}>
+          <Text style={[styles.resend, resending && { opacity: 0.55 }]}>
+            {resending ? "Sending a new code..." : "Didn't receive code? "}<Text style={styles.termsLink}>{resending ? "" : "Resend"}</Text>
+          </Text>
+        </Pressable>
       </Pressable>
       <View style={styles.otpBottom}>
         <ArrowButton label="Verify" onPress={verify} />
@@ -785,10 +775,14 @@ function ProfileSetup({
     setSaving(true);
     try {
       if (api.configured) {
-        const profileAvatar =
-          avatar.kind === "photo"
-            ? await api.uploadProfileImage(avatar)
-            : { kind: "default" as const, id: avatar.id };
+        let profileAvatar = { kind: "default" as const, id: avatar.kind === "default" ? avatar.id : "coral" };
+        if (avatar.kind === "photo") {
+          try {
+            profileAvatar = await api.uploadProfileImage(avatar) as typeof profileAvatar;
+          } catch {
+            Alert.alert("Profile photo skipped", "Your profile details were saved. You can upload a photo later from settings.");
+          }
+        }
         await api.updateProfile({
           displayName: name.trim(),
           primarySkill: selected,
@@ -932,28 +926,7 @@ function ProfileSetup({
         </Pressable>
         {mapboxToken && (
           <>
-            <View style={styles.mapPreview}>
-              <MapView
-                style={styles.map}
-                region={{
-                  ...mapCenter,
-                  latitudeDelta: 0.045,
-                  longitudeDelta: 0.045,
-                }}
-                mapType="none"
-                rotateEnabled={false}
-              >
-                <UrlTile
-                  urlTemplate={`https://api.mapbox.com/styles/v1/mapbox/${mapTheme}/tiles/256/{z}/{x}/{y}@2x?access_token=${encodeURIComponent(mapboxToken)}`}
-                  maximumZ={19}
-                />
-                <Marker coordinate={mapCenter} pinColor={colors.primary} />
-              </MapView>
-              <View style={styles.mapBadge}>
-                <Ionicons name="map-outline" size={15} color={colors.primary} />
-                <Text style={styles.mapBadgeText}>Mapbox location preview</Text>
-              </View>
-            </View>
+            <LocationMapPreview center={mapCenter} theme={mapTheme} token={mapboxToken} />
             <View style={styles.mapThemeRow}>
               {mapThemes.map((theme) => (
                 <Pressable
@@ -1051,6 +1024,7 @@ function ProfileSetup({
         <ArrowButton
           label={saving ? "Saving profile..." : "Save and Continue"}
           onPress={saveProfile}
+          disabled={saving}
         />
         <Text style={styles.profileTerms}>
           By creating a profile, you agree to the Vowch Community Guidelines and
@@ -2008,15 +1982,7 @@ function AuthBack({ onPress }: { onPress: () => void }) {
   );
 }
 
-function SignupWithRecovery({
-  onBack,
-  onDone,
-  onForgot,
-}: {
-  onBack: () => void;
-  onDone: (email: string) => void;
-  onForgot: () => void;
-}) {
+function SignupWithRecovery({ onDone }: { onDone: (email: string) => void }) {
   const [email, setEmail] = useState("");
   const continueSignIn = () => {
     if (!isValidEmail(email)) {
@@ -2034,7 +2000,6 @@ function SignupWithRecovery({
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={authStyles.header}>
-        <AuthBack onPress={onBack} />
         <Image
           source={brandAsset}
           style={authStyles.logo}
@@ -2061,11 +2026,8 @@ function SignupWithRecovery({
           style={authStyles.input}
         />
         <ArrowButton label="Continue" onPress={continueSignIn} />
-        <Pressable onPress={onForgot} hitSlop={12}>
-          <Text style={authStyles.forgot}>Forgot password?</Text>
-        </Pressable>
         <Text style={authStyles.footer}>
-          New to Vowch? <Text style={authStyles.link}>Create an account</Text>
+          New to Vowch? We’ll create your free profile after you verify your email.
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>
