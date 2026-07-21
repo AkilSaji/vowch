@@ -351,10 +351,10 @@ function SkillPassportCard({ profile }: { profile: any }) {
   };
   const pan = useMemo(() => PanResponder.create({
     onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2,
+    onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 5 || Math.abs(gesture.dy) > 5,
     onPanResponderMove: (_, gesture) => {
-      tiltX.setValue(Math.max(-1, Math.min(1, gesture.dy / 135)));
-      tiltY.setValue(Math.max(-1, Math.min(1, gesture.dx / 135)));
+      tiltX.setValue(Math.max(-1, Math.min(1, gesture.dy / 110)));
+      tiltY.setValue(Math.max(-1, Math.min(1, gesture.dx / 110)));
     },
     onPanResponderRelease: (_, gesture) => {
       if (Math.abs(gesture.dx) < 7 && Math.abs(gesture.dy) < 7) toggle();
@@ -372,10 +372,10 @@ function SkillPassportCard({ profile }: { profile: any }) {
         <LinearGradient colors={["#08090D", "#292B36", "#101116"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         <View style={houseStyles.passportMetal} /><View style={houseStyles.passportRingOne} /><View style={houseStyles.passportRingTwo} />
         <View style={houseStyles.skillPassportTop}><View style={houseStyles.skillPassportBrand}><Text style={houseStyles.skillPassportV}>v</Text><Text style={houseStyles.skillPassportWord}>VOWCH</Text></View><Text style={houseStyles.skillPassportEdition}>SKILL PASSPORT{"\n"}01 / BENGALURU</Text></View>
-        <View style={houseStyles.skillPassportChipRow}><View style={houseStyles.passportChip}><View /><View /><View /><View /></View><View style={houseStyles.passportStatus}><View style={[houseStyles.passportStatusDot, status === "VOUCHED" ? houseStyles.passportStatusDotLive : houseStyles.passportStatusDotPending]} /><Text style={houseStyles.passportStatusText}>{status}</Text></View></View>
-        <View style={houseStyles.skillPassportMember}><Text style={houseStyles.skillPassportLabel}>MEMBER</Text><Text style={houseStyles.skillPassportName}>{name}</Text><Text style={houseStyles.skillPassportSkill}>{skill}</Text></View>
+        <View style={houseStyles.skillPassportChipRow}><View style={houseStyles.passportChip}>{[0, 1, 2, 3].map((part) => <View key={part} style={houseStyles.passportChipLine} />)}</View><View style={houseStyles.passportStatus}><View style={[houseStyles.passportStatusDot, status === "VOUCHED" ? houseStyles.passportStatusDotLive : houseStyles.passportStatusDotPending]} /><Text style={houseStyles.passportStatusText}>{status}</Text></View></View>
+        <View style={houseStyles.skillPassportMember}><Text style={houseStyles.skillPassportLabel}>MEMBER</Text><Text style={houseStyles.skillPassportName} numberOfLines={1}>{name}</Text><Text style={houseStyles.skillPassportSkill} numberOfLines={1}>{skill}</Text></View>
         <View style={houseStyles.skillPassportCred}><Text style={houseStyles.skillPassportLabel}>TRUST CRED</Text><Text style={houseStyles.skillPassportCredNumber}>{String(cred).padStart(3, "0")}</Text><Text style={houseStyles.skillPassportTiny}>OUT OF 1000</Text></View>
-        <View style={houseStyles.skillPassportBottom}><View><Text style={houseStyles.skillPassportLabel}>PASSPORT NUMBER</Text><Text style={houseStyles.skillPassportId}>{passportNo}</Text></View><View style={{ alignItems: "flex-end" }}><Text style={houseStyles.skillPassportLabel}>NETWORK</Text><Text style={houseStyles.skillPassportId}>VOWCH / IN</Text></View>{icon("shield-checkmark", 25, colors.gold)}</View>
+        <View style={houseStyles.skillPassportBottom}><View><Text style={houseStyles.skillPassportLabel}>PASSPORT NUMBER</Text><Text style={houseStyles.skillPassportId}>{passportNo}</Text></View><View style={houseStyles.skillPassportNetwork}><Text style={houseStyles.skillPassportLabel}>NETWORK</Text><Text style={houseStyles.skillPassportId}>VOWCH / IN</Text></View><View style={houseStyles.passportShield}>{icon("shield-checkmark", 18, colors.gold)}</View></View>
       </Animated.View>
       <Animated.View style={[houseStyles.skillPassportFace, houseStyles.skillPassportBack, { transform: [{ rotateY: backTurn }] }]}>
         <View style={houseStyles.passportMetal} /><View style={houseStyles.passportStripe} /><View style={houseStyles.passportBackCopy}><Text style={houseStyles.passportBackKicker}>VOWCH TRUST LAYER</Text><Text style={houseStyles.passportBackTitle}>Built for accountable local work.</Text><Text style={houseStyles.passportBackBody}>Your identity, local reputation, and skill history live together here.</Text></View><View style={houseStyles.passportBackGrid}>{[["PRIMARY SKILL", skill], ["STATUS", status], ["CRED SCORE", String(cred)], ["NETWORK", "BENGALURU"]].map(([label, value]) => <View key={label} style={houseStyles.passportBackItem}><Text style={houseStyles.passportBackItemLabel}>{label}</Text><Text style={houseStyles.passportBackItemValue}>{value}</Text></View>)}</View><View style={houseStyles.passportBackFooter}><Text style={houseStyles.passportBackFooterText}>VOWCH / {passportNo}</Text><Text style={houseStyles.passportBackFooterText}>Tap to return</Text></View>
@@ -4750,15 +4750,17 @@ const exploreStyles = StyleSheet.create({
 
 const houseStyles = StyleSheet.create({
   scroll: { paddingBottom: 32 },
-  passportWrap: { marginBottom: 22, marginTop: 4 },
-  passportTilt: { aspectRatio: 1.586, position: "relative", width: "100%" },
+  passportWrap: { marginBottom: 20, marginTop: 2 },
+  passportTilt: { aspectRatio: 1.586, borderRadius: 24, elevation: 10, position: "relative", shadowColor: "#050509", shadowOpacity: 0.38, shadowRadius: 18, shadowOffset: { width: 0, height: 12 }, width: "100%" },
   skillPassportFace: {
     backfaceVisibility: "hidden",
-    borderRadius: 26,
+    borderColor: "rgba(255,255,255,0.14)",
+    borderRadius: 24,
+    borderWidth: 1,
     bottom: 0,
     left: 0,
     overflow: "hidden",
-    padding: 22,
+    padding: 16,
     position: "absolute",
     right: 0,
     top: 0,
@@ -4766,39 +4768,42 @@ const houseStyles = StyleSheet.create({
   skillPassportFront: { backgroundColor: "#15161D" },
   skillPassportBack: { backgroundColor: "#17181E" },
   passportMetal: { backgroundColor: "rgba(255,255,255,0.035)", bottom: 0, left: 0, position: "absolute", right: 0, top: 0 },
-  passportRingOne: { borderColor: "rgba(255,255,255,0.12)", borderRadius: 200, borderWidth: 1, height: 360, position: "absolute", right: -55, top: -190, transform: [{ rotate: "-28deg" }], width: 150 },
-  passportRingTwo: { borderColor: "rgba(253,92,99,0.36)", borderRadius: 180, borderWidth: 1, height: 270, position: "absolute", right: 42, top: 54, transform: [{ rotate: "-28deg" }], width: 75 },
+  passportRingOne: { borderColor: "rgba(255,255,255,0.12)", borderRadius: 200, borderWidth: 1, height: 280, position: "absolute", right: -50, top: -142, transform: [{ rotate: "-28deg" }], width: 135 },
+  passportRingTwo: { borderColor: "rgba(253,92,99,0.38)", borderRadius: 180, borderWidth: 1, height: 210, position: "absolute", right: 30, top: 36, transform: [{ rotate: "-28deg" }], width: 62 },
   skillPassportTop: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", zIndex: 2 },
   skillPassportBrand: { alignItems: "center", flexDirection: "row", gap: 8 },
-  skillPassportV: { alignItems: "center", backgroundColor: colors.primary, borderRadius: 8, color: "#fff", fontFamily: "Baloo2_800ExtraBold", fontSize: 19, height: 26, lineHeight: 26, textAlign: "center", width: 26 },
-  skillPassportWord: { color: "#fff", fontFamily: "Baloo2_800ExtraBold", fontSize: 17, letterSpacing: -0.4 },
-  skillPassportEdition: { color: "#C2C3CB", fontFamily: "Baloo2_700Bold", fontSize: 8, letterSpacing: 0.8, lineHeight: 12, textAlign: "right" },
-  skillPassportChipRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginTop: 23, zIndex: 2 },
-  passportChip: { backgroundColor: "#C6B577", borderColor: "#F5E7B3", borderRadius: 8, borderWidth: 1, height: 39, shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 8, width: 57 },
-  passportStatus: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.16)", borderRadius: 16, borderWidth: 1, flexDirection: "row", gap: 6, paddingHorizontal: 9, paddingVertical: 6 },
+  skillPassportV: { alignItems: "center", backgroundColor: colors.primary, borderRadius: 7, color: "#fff", fontFamily: "Baloo2_800ExtraBold", fontSize: 16, height: 23, lineHeight: 23, textAlign: "center", width: 23 },
+  skillPassportWord: { color: "#fff", fontFamily: "Baloo2_800ExtraBold", fontSize: 15, letterSpacing: -0.35 },
+  skillPassportEdition: { color: "#C2C3CB", fontFamily: "Baloo2_700Bold", fontSize: 7, letterSpacing: 0.65, lineHeight: 10, textAlign: "right" },
+  skillPassportChipRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginTop: 14, zIndex: 2 },
+  passportChip: { backgroundColor: "#C6B577", borderColor: "#F5E7B3", borderRadius: 7, borderWidth: 1, flexDirection: "row", height: 33, overflow: "hidden", shadowColor: "#000", shadowOpacity: 0.35, shadowRadius: 8, width: 50 },
+  passportChipLine: { borderRightColor: "rgba(79,61,20,0.48)", borderRightWidth: 1, flex: 1 },
+  passportStatus: { alignItems: "center", backgroundColor: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.16)", borderRadius: 14, borderWidth: 1, flexDirection: "row", gap: 5, paddingHorizontal: 8, paddingVertical: 5 },
   passportStatusText: { color: "#E6E6EC", fontFamily: "Baloo2_700Bold", fontSize: 8, letterSpacing: 0.5 },
   passportStatusDot: { borderRadius: 4, height: 7, width: 7 },
   passportStatusDotLive: { backgroundColor: "#80E4B9", shadowColor: "#80E4B9", shadowOpacity: 0.9, shadowRadius: 6 },
   passportStatusDotPending: { backgroundColor: "#F6B900" },
-  skillPassportMember: { marginTop: 27, zIndex: 2 },
-  skillPassportLabel: { color: "#AEB0BC", fontFamily: "Baloo2_700Bold", fontSize: 8, letterSpacing: 1, lineHeight: 11 },
-  skillPassportName: { color: "#fff", fontFamily: "Baloo2_800ExtraBold", fontSize: 31, letterSpacing: -1.6, lineHeight: 34, marginTop: 3 },
-  skillPassportSkill: { color: "#D1D2DA", fontFamily: "Baloo2_500Medium", fontSize: 12, marginTop: 2 },
-  skillPassportCred: { alignItems: "flex-end", bottom: 53, position: "absolute", right: 22, zIndex: 2 },
-  skillPassportCredNumber: { color: "#fff", fontFamily: "Baloo2_800ExtraBold", fontSize: 43, letterSpacing: -2, lineHeight: 42 },
-  skillPassportTiny: { color: "#AEB0BC", fontFamily: "Baloo2_700Bold", fontSize: 7, letterSpacing: 0.7 },
-  skillPassportBottom: { alignItems: "flex-end", bottom: 20, flexDirection: "row", left: 22, position: "absolute", right: 22, zIndex: 2 },
-  skillPassportId: { color: "#fff", fontFamily: "Baloo2_700Bold", fontSize: 10, letterSpacing: 0.7, marginTop: 1 },
+  skillPassportMember: { marginTop: 15, maxWidth: "63%", zIndex: 2 },
+  skillPassportLabel: { color: "#AEB0BC", fontFamily: "Baloo2_700Bold", fontSize: 7, letterSpacing: 0.8, lineHeight: 10 },
+  skillPassportName: { color: "#fff", fontFamily: "Baloo2_800ExtraBold", fontSize: 25, letterSpacing: -1.25, lineHeight: 28, marginTop: 1 },
+  skillPassportSkill: { color: "#D1D2DA", fontFamily: "Baloo2_500Medium", fontSize: 11, marginTop: 0 },
+  skillPassportCred: { alignItems: "flex-end", bottom: 42, position: "absolute", right: 16, zIndex: 2 },
+  skillPassportCredNumber: { color: "#fff", fontFamily: "Baloo2_800ExtraBold", fontSize: 35, letterSpacing: -1.6, lineHeight: 35 },
+  skillPassportTiny: { color: "#AEB0BC", fontFamily: "Baloo2_700Bold", fontSize: 6, letterSpacing: 0.6 },
+  skillPassportBottom: { alignItems: "flex-end", bottom: 14, flexDirection: "row", justifyContent: "space-between", left: 16, position: "absolute", right: 16, zIndex: 2 },
+  skillPassportNetwork: { alignItems: "flex-end", marginLeft: "auto", marginRight: 9 },
+  passportShield: { alignItems: "center", backgroundColor: "rgba(246,185,0,0.1)", borderColor: "rgba(246,185,0,0.45)", borderRadius: 12, borderWidth: 1, height: 27, justifyContent: "center", width: 27 },
+  skillPassportId: { color: "#fff", fontFamily: "Baloo2_700Bold", fontSize: 9, letterSpacing: 0.55, marginTop: 0 },
   passportStripe: { backgroundColor: "#060608", height: 47, left: 0, position: "absolute", right: 0, top: 48 },
-  passportBackCopy: { marginTop: 67, maxWidth: 250, zIndex: 2 },
+  passportBackCopy: { marginTop: 50, maxWidth: 235, zIndex: 2 },
   passportBackKicker: { color: "#FF9297", fontFamily: "Baloo2_700Bold", fontSize: 8, letterSpacing: 0.9 },
-  passportBackTitle: { color: "#fff", fontFamily: "Baloo2_800ExtraBold", fontSize: 23, letterSpacing: -1, lineHeight: 25, marginTop: 3 },
-  passportBackBody: { color: "#CCCDD5", fontFamily: "Baloo2_500Medium", fontSize: 10, lineHeight: 15, marginTop: 5 },
-  passportBackGrid: { bottom: 46, flexDirection: "row", gap: 7, justifyContent: "space-between", left: 22, position: "absolute", right: 22, zIndex: 2 },
+  passportBackTitle: { color: "#fff", fontFamily: "Baloo2_800ExtraBold", fontSize: 20, letterSpacing: -0.8, lineHeight: 22, marginTop: 3 },
+  passportBackBody: { color: "#CCCDD5", fontFamily: "Baloo2_500Medium", fontSize: 9, lineHeight: 13, marginTop: 4 },
+  passportBackGrid: { bottom: 39, flexDirection: "row", gap: 6, justifyContent: "space-between", left: 16, position: "absolute", right: 16, zIndex: 2 },
   passportBackItem: { borderTopColor: "rgba(255,255,255,0.18)", borderTopWidth: 1, flex: 1, paddingTop: 5 },
   passportBackItemLabel: { color: "#AEB0BC", fontFamily: "Baloo2_700Bold", fontSize: 6, letterSpacing: 0.35 },
   passportBackItemValue: { color: "#fff", fontFamily: "Baloo2_700Bold", fontSize: 9, marginTop: 1 },
-  passportBackFooter: { bottom: 20, flexDirection: "row", justifyContent: "space-between", left: 22, position: "absolute", right: 22, zIndex: 2 },
+  passportBackFooter: { bottom: 14, flexDirection: "row", justifyContent: "space-between", left: 16, position: "absolute", right: 16, zIndex: 2 },
   passportBackFooterText: { color: "#AEB0BC", fontFamily: "Baloo2_700Bold", fontSize: 8, letterSpacing: 0.55 },
   passportMotionHint: { color: colors.muted, fontFamily: "Baloo2_700Bold", fontSize: 10, letterSpacing: 0.4, marginTop: 11, textAlign: "center" },
   passportCard: { borderRadius: 30, padding: 25, marginBottom: 25 },
