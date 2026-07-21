@@ -53,6 +53,8 @@ paths:
   /v1/admin/payments: { get: { responses: { '200': { description: Paginated payment directory } } } }
   /v1/admin/payments/{paymentId}: { get: { parameters: [{ $ref: '#/components/parameters/paymentId' }], responses: { '200': { description: Payment and ledger detail } } } }
   /v1/admin/notification-delivery: { get: { responses: { '200': { description: Notification delivery diagnostics } } } }
+  /v1/admin/access: { get: { responses: { '200': { description: Super-admin Cognito access directory } } }, post: { responses: { '201': { description: Administrator group membership granted } } } }
+  /v1/admin/access/{email}/{group}: { delete: { responses: { '200': { description: Administrator group membership revoked } } } }
 components:
   securitySchemes: { cognito: { type: http, scheme: bearer, bearerFormat: JWT } }
   parameters:

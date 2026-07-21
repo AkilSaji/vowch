@@ -6,6 +6,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 import { EventBridgeClient, PutEventsCommand } from '@aws-sdk/client-eventbridge';
+import { CognitoIdentityProviderClient, AdminAddUserToGroupCommand, AdminRemoveUserFromGroupCommand, ListUsersInGroupCommand } from '@aws-sdk/client-cognito-identity-provider';
 import { createOrder, refundPayment, releaseTransfer, splitTransfer } from './payments.mjs';
 import { broadcastToUser } from './realtime.mjs';
 import { adminPermissionFor, hasAdminPermission } from './auth/permissions.mjs';
@@ -17,8 +18,11 @@ const s3 = new S3Client({});
 const sqs = new SQSClient({});
 const ssm = new SSMClient({}); const runtimeConfig = new Map();
 const eventBridge = new EventBridgeClient({});
+const cognito = new CognitoIdentityProviderClient({});
 const table = process.env.TABLE_NAME;
 const bucket = process.env.UPLOAD_BUCKET;
+const userPoolId = process.env.USER_POOL_ID;
+const adminGroups = new Set(['vowch-super-admin', 'vowch-trust-reviewer', 'vowch-ops-reviewer', 'vowch-finance-reviewer', 'vowch-support-viewer']);
 const json = (statusCode, body, requestId = 'local') => ({ statusCode, headers: { 'content-type': 'application/json', 'cache-control': 'no-store', 'x-request-id': requestId, 'x-content-type-options': 'nosniff', 'x-frame-options': 'DENY', 'referrer-policy': 'no-referrer', 'access-control-allow-origin': '*', 'access-control-allow-headers': 'Content-Type,Authorization,Idempotency-Key' }, body: JSON.stringify(body) });
 const body = (event) => { try { return event.body ? JSON.parse(event.body) : {}; } catch { return null; } };
 const claims = (event) => event.requestContext?.authorizer?.jwt?.claims || event.requestContext?.authorizer?.claims || {};
@@ -167,6 +171,7 @@ export const handler = async (event) => {
   const rawPath = event.rawPath || '/'; const stage = event.requestContext?.stage;
   const path = stage && rawPath.startsWith(`/${stage}/`) ? rawPath.slice(stage.length + 1) : rawPath;
   const method = event.requestContext?.http?.method || 'GET';
+  const userId = caller(event);
   if (method === 'OPTIONS') return json(204, {});
   if (path === '/health') return json(200, { ok: true, service: 'vowch-api', environment: process.env.ENVIRONMENT || 'dev' });
   const adminPermission = adminPermissionFor(path, method);
@@ -183,6 +188,41 @@ export const handler = async (event) => {
     const cursor = pageKey(event.queryStringParameters?.nextToken); if (cursor === null) return responseError(400, 'INVALID_PAGE_TOKEN');
     const result = await db.send(new QueryCommand({ TableName: table, IndexName: 'gsi4', KeyConditionExpression: 'gsi4pk = :pk', ExpressionAttributeValues: { ':pk': 'AUDIT#ALL' }, ScanIndexForward: false, ExclusiveStartKey: cursor, Limit: adminLimit(event.queryStringParameters?.limit, 30) }));
     return json(200, { items: result.Items || [], nextToken: result.LastEvaluatedKey ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64url') : null }, requestId);
+  }
+  if (path === '/v1/admin/access' && method === 'GET') {
+    if (!userPoolId) return responseError(500, 'USER_POOL_NOT_CONFIGURED');
+    const memberships = await Promise.all([...adminGroups].map(async (group) => {
+      const result = await cognito.send(new ListUsersInGroupCommand({ UserPoolId: userPoolId, GroupName: group, Limit: 60 }));
+      return (result.Users || []).map((user) => ({ username: user.Username, email: user.Attributes?.find((attribute) => attribute.Name === 'email')?.Value || user.Username, enabled: user.Enabled !== false, status: user.UserStatus, group }));
+    }));
+    const people = new Map();
+    for (const member of memberships.flat()) {
+      const key = member.username || member.email;
+      const current = people.get(key) || { ...member, groups: [] };
+      current.groups.push(member.group); people.set(key, current);
+    }
+    return json(200, { items: [...people.values()].sort((left, right) => String(left.email).localeCompare(String(right.email))) }, requestId);
+  }
+  if (path === '/v1/admin/access' && method === 'POST') {
+    if (!userPoolId) return responseError(500, 'USER_POOL_NOT_CONFIGURED');
+    const email = String(input.email || '').trim().toLowerCase(); const group = String(input.group || '');
+    if (!/^\S+@\S+\.\S+$/.test(email) || !adminGroups.has(group)) return responseError(400, 'VALID_EMAIL_AND_ADMIN_GROUP_REQUIRED');
+    try { await cognito.send(new AdminAddUserToGroupCommand({ UserPoolId: userPoolId, Username: email, GroupName: group })); }
+    catch (error) { return responseError(error.name === 'UserNotFoundException' ? 404 : 500, error.name === 'UserNotFoundException' ? 'VOWCH_ACCOUNT_NOT_FOUND' : 'ADMIN_ACCESS_UPDATE_FAILED'); }
+    await put(adminAuditRecord({ actorId: userId, action: 'ADMIN_ACCESS_GRANTED', subjectId: email, requestId, before: null, after: { group }, metadata: {} }));
+    return json(201, { email, group }, requestId);
+  }
+  const accessRemoval = path.match(/^\/v1\/admin\/access\/([^/]+)\/([^/]+)$/);
+  if (accessRemoval && method === 'DELETE') {
+    if (!userPoolId) return responseError(500, 'USER_POOL_NOT_CONFIGURED');
+    const email = decodeURIComponent(accessRemoval[1]).toLowerCase(); const group = decodeURIComponent(accessRemoval[2]);
+    if (!adminGroups.has(group)) return responseError(400, 'INVALID_ADMIN_GROUP');
+    const requesterNames = [claims(event).email, claims(event).username, claims(event)['cognito:username']].filter(Boolean).map((value) => String(value).toLowerCase());
+    if (requesterNames.includes(email)) return responseError(400, 'CANNOT_REMOVE_OWN_ADMIN_ACCESS');
+    try { await cognito.send(new AdminRemoveUserFromGroupCommand({ UserPoolId: userPoolId, Username: email, GroupName: group })); }
+    catch (error) { return responseError(error.name === 'UserNotFoundException' ? 404 : 500, error.name === 'UserNotFoundException' ? 'VOWCH_ACCOUNT_NOT_FOUND' : 'ADMIN_ACCESS_UPDATE_FAILED'); }
+    await put(adminAuditRecord({ actorId: userId, action: 'ADMIN_ACCESS_REVOKED', subjectId: email, requestId, before: { group }, after: null, metadata: {} }));
+    return json(200, { email, group }, requestId);
   }
   if (path === '/v1/admin/users' && method === 'GET') {
     const cursor = pageKey(event.queryStringParameters?.nextToken); if (cursor === null) return responseError(400, 'INVALID_PAGE_TOKEN'); const query = String(event.queryStringParameters?.query || '').trim(); const accountStatus = String(event.queryStringParameters?.status || '').trim();
@@ -234,7 +274,7 @@ export const handler = async (event) => {
     await put(item); return json(201, { waitlistId, position: item.position, status: item.status });
   }
 
-  const userId = caller(event); if (!userId) return responseError(401, 'UNAUTHENTICATED');
+  if (!userId) return responseError(401, 'UNAUTHENTICATED');
   if (path === '/v1/onboarding/complete' && method === 'POST') {
     if (!input.displayName || !input.primarySkill || !input.inviteCode) return responseError(400, 'displayName, primarySkill and inviteCode are required');
     const existing = await get(`USER#${userId}`, 'PROFILE');
