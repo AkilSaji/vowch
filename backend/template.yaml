@@ -272,6 +272,7 @@ Resources:
       Environment:
         Variables:
           WEBSOCKET_MANAGEMENT_ENDPOINT: !Sub 'https://${RealtimeApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+          USER_POOL_ID: !Ref UserPool
       Policies:
         - DynamoDBCrudPolicy: { TableName: !Ref VowchTable }
         - S3CrudPolicy: { BucketName: !Ref UploadBucketName }
@@ -281,6 +282,7 @@ Resources:
             - { Effect: Allow, Action: ssm:GetParameter, Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter${SsmPrefix}/*' }
             - { Effect: Allow, Action: events:PutEvents, Resource: !GetAtt VowchEventBus.Arn }
             - { Effect: Allow, Action: execute-api:ManageConnections, Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${RealtimeApi}/${Environment}/POST/@connections/*' }
+            - { Effect: Allow, Action: [cognito-idp:ListUsersInGroup, cognito-idp:AdminAddUserToGroup, cognito-idp:AdminRemoveUserFromGroup], Resource: !GetAtt UserPool.Arn }
       Events:
         Health: { Type: HttpApi, Properties: { ApiId: !Ref VowchApi, Path: /health, Method: GET, Auth: { Authorizer: NONE } } }
         PublicRequest: { Type: HttpApi, Properties: { ApiId: !Ref VowchApi, Path: /v1/public/requests, Method: POST, Auth: { Authorizer: NONE } } }

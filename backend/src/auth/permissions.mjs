@@ -30,6 +30,7 @@ export const hasAdminPermission = (event, permission = 'admin:access') => {
 
 export const adminPermissionFor = (path, method) => {
   if (!path.startsWith('/v1/admin/')) return null;
+  if (path.startsWith('/v1/admin/access')) return 'admin:manage';
   if (path.startsWith('/v1/admin/dashboard')) return 'admin:access';
   if (path.startsWith('/v1/admin/identity-reviews')) return method === 'GET' ? 'identity:read' : 'identity:resolve';
   if (path.startsWith('/v1/admin/skill-reviews')) return method === 'GET' ? 'skills:read' : 'skills:resolve';
