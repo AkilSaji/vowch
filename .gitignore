@@ -8,6 +8,12 @@ vite.config.d.ts
 coverage/
 .aws-sam/
 
+# Expo local development and verification artefacts
+apps/mobile/.expo/
+apps/mobile/.expo-*/
+apps/mobile/expo-*.log
+apps/mobile/expo-*.png
+
 # Environment and local secrets
 .env
 .env.*

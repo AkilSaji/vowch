@@ -26,18 +26,13 @@ export const cognitoAuth = {
   async register(email: string) {
     try {
       await cognito('SignUp', { ClientId: clientId, Username: email, Password: demoPassword(), UserAttributes: [{ Name: 'email', Value: email }] });
-      return { needsConfirmation: true, existing: false };
+      return { existing: false };
     } catch (error) {
-      if (String(error).includes('UsernameExistsException')) return { needsConfirmation: false, existing: true };
+      if (String(error).includes('UsernameExistsException')) return { existing: true };
       throw error;
     }
   },
-  async confirm(email: string, code: string) {
-    await cognito('ConfirmSignUp', { ClientId: clientId, Username: email, ConfirmationCode: code });
-  },
-  async resendConfirmation(email: string) {
-    await cognito('ResendConfirmationCode', { ClientId: clientId, Username: email });
-  },
+  async startOtp(email: string) { await this.register(email); return this.beginOtp(email); },
   async beginOtp(email: string) {
     const response = await cognito('InitiateAuth', { ClientId: clientId, AuthFlow: 'CUSTOM_AUTH', AuthParameters: { USERNAME: email } });
     if (response.ChallengeName !== 'CUSTOM_CHALLENGE' || !response.Session) throw new Error('Unable to start the Vowch email code challenge.');
