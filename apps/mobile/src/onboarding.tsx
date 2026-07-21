@@ -594,14 +594,14 @@ function ProfileSetup({
   const [locating, setLocating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [nearbyPlaces, setNearbyPlaces] = useState([
-    "Park Slope, Brooklyn",
-    "Fort Greene, Brooklyn",
-    "Williamsburg, Brooklyn",
-    "Downtown Brooklyn",
+    "Indiranagar, Bengaluru",
+    "Koramangala, Bengaluru",
+    "HSR Layout, Bengaluru",
+    "Whitefield, Bengaluru",
   ]);
   const [mapCenter, setMapCenter] = useState({
-    latitude: 40.6782,
-    longitude: -73.9442,
+    latitude: 12.9716,
+    longitude: 77.5946,
   });
   const [placeResults, setPlaceResults] = useState<
     Array<{ id: string; label: string; latitude: number; longitude: number }>
