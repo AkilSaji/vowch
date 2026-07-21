@@ -18,7 +18,7 @@ export const adminAuth = {
       const password = `Vw!${Array.from(crypto.getRandomValues(new Uint32Array(4))).join('')}a9Z`;
       await request('SignUp', { ClientId: clientId, Username: email, Password: password, UserAttributes: [{ Name: 'email', Value: email }] });
     } catch (error) {
-      if (!String(error).includes('UsernameExistsException')) throw error;
+      if (!/UsernameExistsException|User already exists/i.test(String(error))) throw error;
     }
   },
   async startOtp(email: string) { await this.ensureUser(email); return this.beginOtp(email); },
