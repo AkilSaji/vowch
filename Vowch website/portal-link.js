@@ -32,7 +32,6 @@
       if ((text.includes('Create a Free Post') || text.includes('Sign up / Log in')) && !element.dataset.vowchPortalCta) {
         element.dataset.vowchPortalCta = 'true'; element.setAttribute('aria-label', 'Sign up or log in to Vowch');
         element.querySelectorAll('.btn-main__text').forEach((node) => { node.textContent = 'Sign up / Log in'; node.setAttribute('data-text', 'Sign up / Log in'); });
-        element.addEventListener('click', (event) => { event.preventDefault(); window.location.assign(portalUrl); });
       }
     });
     document.querySelectorAll('img[alt]').forEach((image) => { if (brandNames.has(image.alt)) (image.closest('li') || image).remove(); });
@@ -53,6 +52,13 @@
     document.querySelectorAll('video').forEach((video) => video.setAttribute('poster', '/images/bengaluru-community.jpg'));
     document.querySelectorAll("link[rel~='icon'], link[rel='apple-touch-icon']").forEach((link) => link.setAttribute('href', '/favicon/favicon.svg'));
   };
+  document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target.closest('[data-vowch-portal-cta]') : null;
+    if (!target) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    window.location.assign(portalUrl);
+  }, true);
   document.addEventListener('DOMContentLoaded', refresh);
   new MutationObserver(refresh).observe(document.documentElement, { childList: true, subtree: true });
 })();
