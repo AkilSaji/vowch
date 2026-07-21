@@ -3041,7 +3041,7 @@ function Header({
   return (
     <View style={styles.header}>
       <View>
-        <Text style={styles.headerKicker}>{subtitle ?? "BROOKLYN, NY"}</Text>
+        <Text style={styles.headerKicker}>{subtitle ?? "BENGALURU, INDIA"}</Text>
         {isBrand ? (
           <Image
             source={brandAsset}
@@ -3078,6 +3078,13 @@ function Home({
       contentContainerStyle={styles.scrollContent}
     >
       <Header title="Vowch" onBell={() => setScreen("notifications")} />
+      <View style={styles.homeIntro}>
+        <Text style={styles.homeKicker}>YOUR LOCAL TRUST LAYER</Text>
+        <Text style={styles.homeTitle}>Neighbourhood help, made human.</Text>
+        <Text style={styles.homeBody}>
+          Find a trusted person nearby or share the work you can do.
+        </Text>
+      </View>
       <Pressable style={styles.search} onPress={() => setScreen("explore")}>
         {icon("search-outline", 19, colors.muted)}
         <Text style={styles.searchText}>What do you need help with?</Text>
@@ -4368,17 +4375,17 @@ function VowchApp() {
 const exploreStyles = StyleSheet.create({
   screen: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     backgroundColor: colors.background,
   },
   scroll: { paddingBottom: 112 },
   search: {
     minHeight: 56,
     flex: 1,
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: "#E9DDE2",
-    backgroundColor: "#fff",
+    backgroundColor: "#F4F1F8",
     paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
@@ -4400,7 +4407,7 @@ const exploreStyles = StyleSheet.create({
   sectionTitle: {
     color: colors.ink,
     fontFamily: "Baloo2_800ExtraBold",
-    fontSize: 23,
+    fontSize: 21,
   },
   link: {
     color: colors.primary,
@@ -4411,7 +4418,7 @@ const exploreStyles = StyleSheet.create({
   trend: {
     paddingHorizontal: 16,
     height: 42,
-    borderRadius: 21,
+    borderRadius: 14,
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#EEE5E9",
@@ -4435,15 +4442,13 @@ const exploreStyles = StyleSheet.create({
   category: {
     width: "47.5%",
     minHeight: 126,
-    borderRadius: 28,
+    borderRadius: 20,
     backgroundColor: "#fff",
     alignItems: "center",
     justifyContent: "center",
     gap: 12,
-    shadowColor: "#342A40",
-    shadowOpacity: 0.05,
-    shadowRadius: 18,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   categoryIcon: {
     height: 56,
@@ -4463,7 +4468,7 @@ const exploreStyles = StyleSheet.create({
   filterButton: {
     width: 56,
     height: 56,
-    borderRadius: 18,
+    borderRadius: 16,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -4500,7 +4505,7 @@ const exploreStyles = StyleSheet.create({
   filterChip: {
     height: 38,
     paddingHorizontal: 14,
-    borderRadius: 19,
+    borderRadius: 14,
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#EEE5E9",
@@ -4564,9 +4569,11 @@ const exploreStyles = StyleSheet.create({
   },
   distanceCard: {
     backgroundColor: "#fff",
-    borderRadius: 24,
+    borderRadius: 20,
     padding: 22,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   distanceHead: { flexDirection: "row", justifyContent: "space-between" },
   distanceLabel: {
@@ -4607,7 +4614,7 @@ const exploreStyles = StyleSheet.create({
   small: { color: colors.muted, fontFamily: "Baloo2_500Medium", fontSize: 13 },
   typeRow: {
     minHeight: 56,
-    borderRadius: 15,
+    borderRadius: 16,
     backgroundColor: "#fff",
     borderWidth: 1,
     borderColor: "#EFE6E9",
@@ -4661,7 +4668,7 @@ const exploreStyles = StyleSheet.create({
   },
   applyButton: {
     height: 56,
-    borderRadius: 28,
+    borderRadius: 16,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -5626,21 +5633,21 @@ const styles = StyleSheet.create({
   app: { flex: 1, backgroundColor: colors.background },
   screen: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     backgroundColor: colors.background,
   },
   scrollContent: { paddingBottom: 112 },
   header: {
-    paddingTop: 22,
-    paddingBottom: 18,
+    paddingTop: 24,
+    paddingBottom: 16,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
   headerKicker: {
-    fontSize: 10,
-    letterSpacing: 1.1,
-    fontFamily: "Baloo2_800ExtraBold",
+    fontSize: 9,
+    letterSpacing: 1.4,
+    fontFamily: "Baloo2_700Bold",
     color: colors.muted,
   },
   brand: {
@@ -5656,6 +5663,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: radius.pill,
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
     position: "relative",
   },
   dot: {
@@ -5668,12 +5677,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   search: {
-    height: 52,
+    height: 54,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: radius.md,
-    backgroundColor: colors.surface,
-    paddingHorizontal: 15,
+    borderRadius: 16,
+    backgroundColor: "#F4F1F8",
+    paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
@@ -5684,12 +5693,41 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontFamily: "Baloo2_500Medium",
   },
-  actionRow: { flexDirection: "row", gap: 10, marginTop: 13 },
+  homeIntro: {
+    marginBottom: 16,
+    padding: 20,
+    borderRadius: 22,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  homeKicker: {
+    color: colors.primary,
+    fontFamily: "Baloo2_800ExtraBold",
+    fontSize: 10,
+    letterSpacing: 1.1,
+  },
+  homeTitle: {
+    color: colors.ink,
+    fontFamily: "Baloo2_800ExtraBold",
+    fontSize: 27,
+    lineHeight: 32,
+    letterSpacing: -0.7,
+    marginTop: 7,
+  },
+  homeBody: {
+    color: colors.muted,
+    fontFamily: "Baloo2_500Medium",
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 6,
+  },
+  actionRow: { flexDirection: "row", gap: 10, marginTop: 12 },
   primaryAction: {
     flex: 1.15,
     backgroundColor: colors.primary,
     minHeight: 46,
-    borderRadius: radius.pill,
+    borderRadius: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -5703,8 +5741,10 @@ const styles = StyleSheet.create({
   secondaryAction: {
     flex: 0.85,
     minHeight: 46,
-    borderRadius: radius.pill,
-    backgroundColor: colors.rose,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: "#F7C8CB",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -5719,11 +5759,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 27,
+    marginTop: 30,
     marginBottom: 11,
   },
   sectionTitle: {
-    fontSize: 19,
+    fontSize: 21,
     fontFamily: "Baloo2_800ExtraBold",
     color: colors.ink,
   },
@@ -5734,13 +5774,11 @@ const styles = StyleSheet.create({
   },
   gigCard: {
     backgroundColor: colors.surface,
-    padding: 16,
-    borderRadius: radius.lg,
+    padding: 17,
+    borderRadius: 20,
     marginBottom: 12,
-    shadowColor: "#312C45",
-    shadowOpacity: 0.06,
-    shadowRadius: 18,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   pressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
   gigTop: {
@@ -5751,7 +5789,7 @@ const styles = StyleSheet.create({
   pill: {
     alignSelf: "flex-start",
     backgroundColor: colors.lavender,
-    borderRadius: radius.pill,
+    borderRadius: 9,
     paddingHorizontal: 9,
     paddingVertical: 5,
   },
@@ -5774,7 +5812,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 22,
     fontFamily: "Baloo2_800ExtraBold",
-    marginTop: 11,
+    marginTop: 12,
   },
   gigDescription: {
     fontSize: 12,
@@ -5787,7 +5825,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 11,
     borderTopWidth: 1,
-    borderTopColor: "#F0EEF3",
+    borderTopColor: colors.line,
     flexDirection: "row",
     justifyContent: "space-between",
     gap: 10,
@@ -5820,12 +5858,10 @@ const styles = StyleSheet.create({
   featureEmoji: { fontSize: 38, fontFamily: "Baloo2_500Medium" },
   featured: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: 20,
     overflow: "hidden",
-    elevation: 2,
-    shadowColor: colors.ink,
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   featureInfo: { padding: 15 },
   featureTitle: {
@@ -5860,17 +5896,17 @@ const styles = StyleSheet.create({
     minHeight: 52,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: radius.md,
+    borderRadius: 16,
     paddingHorizontal: 14,
     fontSize: 15,
     color: colors.ink,
-    backgroundColor: colors.surface,
+    backgroundColor: "#FDFBFF",
     fontFamily: "Baloo2_500Medium",
   },
   textarea: { height: 116, paddingTop: 14 },
   trustNote: {
-    backgroundColor: "#E7F5F0",
-    borderRadius: radius.md,
+    backgroundColor: "#F0F8F5",
+    borderRadius: 16,
     padding: 14,
     gap: 10,
     flexDirection: "row",
@@ -5885,7 +5921,7 @@ const styles = StyleSheet.create({
   },
   publishButton: {
     minHeight: 54,
-    borderRadius: radius.pill,
+    borderRadius: 16,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
@@ -5906,7 +5942,7 @@ const styles = StyleSheet.create({
   },
   detailTop: {
     marginTop: 18,
-    marginBottom: 25,
+    marginBottom: 22,
     flexDirection: "row",
     justifyContent: "space-between",
   },
@@ -5931,8 +5967,10 @@ const styles = StyleSheet.create({
   },
   posterCard: {
     padding: 14,
-    borderRadius: radius.md,
+    borderRadius: 18,
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
@@ -5984,7 +6022,7 @@ const styles = StyleSheet.create({
   },
   protection: {
     backgroundColor: colors.lavender,
-    borderRadius: radius.md,
+    borderRadius: 18,
     padding: 16,
     marginTop: 4,
     marginBottom: 20,
@@ -6090,8 +6128,10 @@ const styles = StyleSheet.create({
     gap: 13,
     paddingHorizontal: 15,
     marginBottom: 9,
-    borderRadius: radius.md,
+    borderRadius: 18,
     backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   settingText: {
     flex: 1,
@@ -6153,9 +6193,11 @@ const styles = StyleSheet.create({
   },
   trustSummary: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: 18,
     padding: 18,
     marginTop: 10,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   rating: {
     color: colors.primary,
@@ -6163,11 +6205,11 @@ const styles = StyleSheet.create({
     fontFamily: "Baloo2_800ExtraBold",
   },
   nav: {
-    height: 78,
+    height: 76,
     paddingHorizontal: 14,
     borderTopWidth: 1,
     borderTopColor: colors.line,
-    backgroundColor: "#FFFFFFF5",
+    backgroundColor: "#FFFFFFFA",
     position: "absolute",
     bottom: 0,
     left: 0,
@@ -6182,7 +6224,7 @@ const styles = StyleSheet.create({
   fab: {
     height: 49,
     width: 49,
-    borderRadius: 25,
+    borderRadius: 18,
     backgroundColor: colors.primary,
     alignItems: "center",
     justifyContent: "center",
