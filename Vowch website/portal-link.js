@@ -21,6 +21,7 @@
     'and experienced developers:',
     'into your current processes and tools.',
     'and can accommodate various timelines. Please reach out to discuss your specific needs and schedule.',
+    'Sure, we can work quicker when required. We can also work under pressure. But never at the cost of quality. We truly believe in that. Looking at ‘Consistency’, we feel that this is the real benefit of incredibles. Because there’s two of us working as one unit, we can maintain continuity and split work efficiently to keep even the most complex builds moving quickly.',
   ];
   const removeAgencySurfaces = () => {
     // The exported starter site included an agency price calculator and enquiry dialog.
