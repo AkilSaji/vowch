@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "Vowch",
+    "slug": "vowch",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FBF8FF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.vowch.app"
+    },
+    "android": {
+      "package": "com.vowch.app",
+      "edgeToEdgeEnabled": false,
+      "adaptiveIcon": {
+        "backgroundColor": "#FD5C63"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Vowch to access photos so you can choose a profile picture.",
+          "cameraPermission": "Allow Vowch to use your camera so you can take a profile picture."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Vowch to use your location to suggest your neighbourhood."
+        }
+      ]
+    ]
+  }
+}

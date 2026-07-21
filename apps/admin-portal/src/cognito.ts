@@ -13,6 +13,15 @@ async function request(target: string, body: Record<string, unknown>): Promise<R
 
 export const adminAuth = {
   configured: Boolean(clientId),
+  async ensureUser(email: string) {
+    try {
+      const password = `Vw!${Array.from(crypto.getRandomValues(new Uint32Array(4))).join('')}a9Z`;
+      await request('SignUp', { ClientId: clientId, Username: email, Password: password, UserAttributes: [{ Name: 'email', Value: email }] });
+    } catch (error) {
+      if (!String(error).includes('UsernameExistsException')) throw error;
+    }
+  },
+  async startOtp(email: string) { await this.ensureUser(email); return this.beginOtp(email); },
   async beginOtp(email: string) { const data = await request('InitiateAuth', { ClientId: clientId, AuthFlow: 'CUSTOM_AUTH', AuthParameters: { USERNAME: email } }); if (!data.Session) throw new Error('Unable to start email sign-in.'); return data.Session; },
   async verifyOtp(email: string, session: string, code: string) { const data = await request('RespondToAuthChallenge', { ClientId: clientId, ChallengeName: 'CUSTOM_CHALLENGE', Session: session, ChallengeResponses: { USERNAME: email, ANSWER: code } }); const token = data.AuthenticationResult?.AccessToken; if (!token) throw new Error('The code was not accepted.'); return token; },
 };

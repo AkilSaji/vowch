@@ -1,6 +1,14 @@
 import { randomInt, createHash } from 'node:crypto';
 import { sendEmail } from './email.mjs';
 
+// The custom Vowch challenge is the only email-verification step. This avoids
+// Cognito's generic confirmation message and keeps the user in one OTP flow.
+export const preSignUp = async (event) => {
+  event.response.autoConfirmUser = true;
+  event.response.autoVerifyEmail = true;
+  return event;
+};
+
 export const defineAuthChallenge = async (event) => {
   const sessions = event.request.session || [];
   if (sessions.length > 0 && sessions.at(-1).challengeName === 'CUSTOM_CHALLENGE' && sessions.at(-1).challengeResult === true) {

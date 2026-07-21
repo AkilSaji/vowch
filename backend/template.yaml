@@ -201,6 +201,7 @@ Resources:
       UsernameAttributes: [email]
       AutoVerifiedAttributes: [email]
       LambdaConfig:
+        PreSignUp: !GetAtt PreSignUpFunction.Arn
         CreateAuthChallenge: !GetAtt CreateAuthChallengeFunction.Arn
         DefineAuthChallenge: !GetAtt DefineAuthChallengeFunction.Arn
         VerifyAuthChallengeResponse: !GetAtt VerifyAuthChallengeFunction.Arn
@@ -232,6 +233,12 @@ Resources:
       CodeUri: ./
       Handler: src/auth-triggers.createAuthChallenge
 
+  PreSignUpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ./
+      Handler: src/auth-triggers.preSignUp
+
   DefineAuthChallengeFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -247,6 +254,9 @@ Resources:
   CreateAuthChallengePermission:
     Type: AWS::Lambda::Permission
     Properties: { Action: lambda:InvokeFunction, FunctionName: !Ref CreateAuthChallengeFunction, Principal: cognito-idp.amazonaws.com, SourceArn: !GetAtt UserPool.Arn }
+  PreSignUpPermission:
+    Type: AWS::Lambda::Permission
+    Properties: { Action: lambda:InvokeFunction, FunctionName: !Ref PreSignUpFunction, Principal: cognito-idp.amazonaws.com, SourceArn: !GetAtt UserPool.Arn }
   DefineAuthChallengePermission:
     Type: AWS::Lambda::Permission
     Properties: { Action: lambda:InvokeFunction, FunctionName: !Ref DefineAuthChallengeFunction, Principal: cognito-idp.amazonaws.com, SourceArn: !GetAtt UserPool.Arn }
