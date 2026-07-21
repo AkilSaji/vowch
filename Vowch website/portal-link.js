@@ -22,7 +22,28 @@
     'into your current processes and tools.',
     'and can accommodate various timelines. Please reach out to discuss your specific needs and schedule.',
   ];
+  const removeAgencySurfaces = () => {
+    // The exported starter site included an agency price calculator and enquiry dialog.
+    // Vowch sends people directly into the product instead of collecting project briefs.
+    document.querySelectorAll('.s-pricing, .s-modal, [aria-label="Contact form"]').forEach((element) => element.remove());
+    document.querySelectorAll('section').forEach((section) => {
+      const className = String(section.className || '').toLowerCase();
+      const text = section.textContent?.replace(/\s+/g, ' ').trim().toLowerCase() || '';
+      if (
+        className.includes('pricing') ||
+        className.includes('calculator') ||
+        /project enquiry|project information|price range|budget range|estimated timeline/.test(text)
+      ) section.remove();
+    });
+    document.querySelectorAll("a[href*='pricing'], a[href*='calculator']").forEach((link) => (link.closest('li') || link).remove());
+    document.querySelectorAll('button, a').forEach((element) => {
+      const text = element.textContent?.replace(/\s+/g, ' ').trim().toLowerCase() || '';
+      if (text === 'pricing' || text === 'price calculator') (element.closest('li') || element).remove();
+    });
+    document.querySelectorAll('footer .s__contact, footer .s__socials, footer a[href^="mailto:"], footer a[href*="incredibles.dev"], footer a[href*="linkedin.com/company/incredibles"]').forEach((element) => (element.closest('.s__contact, .s__socials') || element).remove());
+  };
   const refresh = () => {
+    removeAgencySurfaces();
     document.querySelectorAll('button, a').forEach((element) => {
       const text = element.textContent?.replace(/\s+/g, ' ').trim() || '';
       if (text.includes('View project')) {
