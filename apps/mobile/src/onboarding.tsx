@@ -127,7 +127,7 @@ export function Onboarding({
   onComplete: () => void;
   onBrowse?: () => void;
 }) {
-  const [stage, setStage] = useState<Stage>("signup");
+  const [stage, setStage] = useState<Stage>("welcome");
   const [page, setPage] = useState(0);
   const [authEmail, setAuthEmail] = useState("");
   const [authSession, setAuthSession] = useState("");
@@ -194,7 +194,20 @@ export function Onboarding({
       setResending(false);
     }
   };
-  const current = stage === "signup" ? (
+  const current = stage === "welcome" ? (
+      <Welcome
+        onStart={() => go("slides")}
+        onLogin={() => go("signup")}
+        onBrowse={onBrowse}
+      />
+    ) : stage === "slides" ? (
+      <Slides
+        page={page}
+        setPage={setPage}
+        onSkip={() => go("signup")}
+        onDone={() => go("signup")}
+      />
+    ) : stage === "signup" ? (
       <SignupWithRecovery
         onDone={startEmailOtp}
       />
