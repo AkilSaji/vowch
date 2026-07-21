@@ -1,6 +1,32 @@
-# Vowch backend and infrastructure
+# Vowch — trusted gig-work marketplace
 
-This repository deploys the Vowch serverless backend: AWS SAM application code in
+Vowch is a marketplace for skilled gig work built around trust. Clients can post
+gigs, and workers use a Skill Passport, referrals ("vouches"), reputation, and
+QR verification to help make sure the right person completes the work.
+
+This repository contains the Vowch web portals, mobile app, serverless backend,
+infrastructure, and deployment workflow.
+
+## Project structure
+
+- `apps/client-portal/` — client-facing web portal for posting and managing gigs
+- `apps/admin-portal/` — administrator portal
+- `apps/mobile/` — Expo / React Native mobile app for workers
+- `backend/` — AWS SAM serverless API and worker services
+- `infra/` — CloudFormation bootstrap and security stacks
+
+## Built with Codex and GPT-5.6
+
+Vowch was built during OpenAI Build Week with Codex using GPT-5.6. Codex was used
+as a development partner to turn the product architecture into working web,
+mobile, backend, and infrastructure code; iterate on user flows and interface
+details; help integrate AWS, Cognito, Mapbox, Expo, and Vercel; and validate and
+refine the implementation. The product decisions, testing, and final integration
+were directed by the builder.
+
+## Backend and infrastructure
+
+The serverless backend is implemented with AWS SAM application code in
 `backend/`, CloudFormation bootstrap and security stacks in `infra/`, and the
 GitHub Actions deployment workflow in `.github/workflows/`.
 
