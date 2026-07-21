@@ -27,14 +27,27 @@ const toGig = (value: any): Gig => ({
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!apiUrl) throw new Error("API URL is not configured");
-  const response = await fetch(`${apiUrl}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...(init?.headers ?? {}),
-    },
-    ...init,
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+  let response: Response;
+  try {
+    response = await fetch(`${apiUrl}${path}`, {
+      headers: {
+        "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...(init?.headers ?? {}),
+      },
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (error: any) {
+    if (error?.name === "AbortError") {
+      throw new Error("The Vowch service took too long to respond. Please try again.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => ({})) as { error?: string; message?: string };
     throw new Error(body.error === "ACTIVE_PASSPORT_REQUIRED" ? "Get vouched before posting or applying for gigs." : body.error || body.message || `Request failed (${response.status})`);
