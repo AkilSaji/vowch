@@ -276,23 +276,19 @@ export const handler = async (event) => {
 
   if (!userId) return responseError(401, 'UNAUTHENTICATED');
   if (path === '/v1/onboarding/complete' && method === 'POST') {
-    if (!input.displayName || !input.primarySkill || !input.inviteCode) return responseError(400, 'displayName, primarySkill and inviteCode are required');
+    if (!input.displayName || !input.primarySkill) return responseError(400, 'displayName and primarySkill are required');
     const existing = await get(`USER#${userId}`, 'PROFILE');
-    if (existing?.onboardingComplete) return json(200, { user: existing, alreadyComplete: true });
-    if (existing?.identityStatus === 'PENDING_MANUAL_REVIEW') return json(202, { status: 'PENDING_MANUAL_REVIEW', reviewId: existing.identityReviewId, message: 'Your identity is awaiting admin verification.' });
-    const found = await db.send(new QueryCommand({ TableName: table, IndexName: 'gsi1', KeyConditionExpression: 'gsi1pk = :pk', ExpressionAttributeValues: { ':pk': `INVITE_CODE#${input.inviteCode}` } }));
+    if (existing?.identityStatus === 'PENDING_MANUAL_REVIEW') return json(202, { status: 'PENDING_MANUAL_REVIEW', reviewId: existing.identityReviewId, message: 'Your Vouching request is already being reviewed. You can continue exploring Vowch.' });
+    if (existing?.identityStatus === 'VERIFIED_MANUALLY' && await activePassportForUser(userId)) return json(200, { user: existing, alreadyComplete: true, status: 'VOUCHED' });
+    const inviteCode = String(input.inviteCode || '').trim(); const profileFields = { ...existing, pk: `USER#${userId}`, sk: 'PROFILE', type: 'USER', userId, email: claims(event).email || existing?.email || null, displayName: String(input.displayName).trim().slice(0, 120), primarySkill: String(input.primarySkill).trim().slice(0, 100), cred: Number(existing?.cred || 0), inviteCapacity: Number(existing?.inviteCapacity || 0), invitesIssued: Number(existing?.invitesIssued || 0), onboardingComplete: true, createdAt: existing?.createdAt || now(), updatedAt: now() };
+    if (!inviteCode) { const user = { ...profileFields, trustStatus: existing?.trustStatus || 'UNVOUCHED', identityStatus: existing?.identityStatus || 'NOT_STARTED' }; await db.send(new PutCommand({ TableName: table, Item: user })); return json(200, { status: 'EXPLORER', user, message: 'Your profile is ready. Browse freely and get vouched when you are ready to transact.' }); }
+    const found = await db.send(new QueryCommand({ TableName: table, IndexName: 'gsi1', KeyConditionExpression: 'gsi1pk = :pk', ExpressionAttributeValues: { ':pk': `INVITE_CODE#${inviteCode}` } }));
     const invite = found.Items?.[0]; if (!invite || invite.status !== 'ISSUED') return responseError(404, 'INVITE_INVALID_OR_REDEEMED');
-    const reviewId = id(); const user = { pk: `USER#${userId}`, sk: 'PROFILE', type: 'USER', userId, email: claims(event).email || existing?.email || null, displayName: input.displayName, primarySkill: input.primarySkill, cred: 500, inviteCapacity: 3, invitesIssued: 0, onboardingComplete: false, identityStatus: 'PENDING_MANUAL_REVIEW', identityReviewId: reviewId, pendingInviteCode: input.inviteCode, identityEvidence: { reference: String(input.identityReference || '').slice(0, 100), notes: String(input.identityNotes || '').slice(0, 1000) }, createdAt: existing?.createdAt || now(), updatedAt: now() };
-    const review = { pk: `IDENTITY_REVIEW#${reviewId}`, sk: 'PROFILE', gsi1pk: 'IDENTITY_REVIEWS#PENDING', gsi1sk: `${now()}#${reviewId}`, type: 'IDENTITY_REVIEW', reviewId, userId, inviteCode: input.inviteCode, status: 'PENDING', displayName: user.displayName, primarySkill: user.primarySkill, evidence: user.identityEvidence, createdAt: now() };
-    try {
-      await db.send(new TransactWriteCommand({ TransactItems: [
-        { Put: { TableName: table, Item: user, ConditionExpression: 'attribute_not_exists(onboardingComplete)' } },
-        { Put: { TableName: table, Item: review, ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)' } }
-      ] }));
-    } catch (error) {
-      return responseError(error.name === 'TransactionCanceledException' ? 409 : 500, error.name === 'TransactionCanceledException' ? 'ONBOARDING_CONFLICT' : 'ONBOARDING_FAILED');
-    }
-    return json(202, { status: user.identityStatus, reviewId, message: 'Identity submitted for manual admin verification.' });
+    const reviewId = id(); const user = { ...profileFields, trustStatus: 'PENDING_VOUCH', identityStatus: 'PENDING_MANUAL_REVIEW', identityReviewId: reviewId, pendingInviteCode: inviteCode, identityEvidence: { reference: String(input.identityReference || '').slice(0, 100), notes: String(input.identityNotes || '').slice(0, 1000) } };
+    const review = { pk: `IDENTITY_REVIEW#${reviewId}`, sk: 'PROFILE', gsi1pk: 'IDENTITY_REVIEWS#PENDING', gsi1sk: `${now()}#${reviewId}`, type: 'IDENTITY_REVIEW', reviewId, userId, inviteCode, status: 'PENDING', displayName: user.displayName, primarySkill: user.primarySkill, evidence: user.identityEvidence, createdAt: now() };
+    try { await db.send(new TransactWriteCommand({ TransactItems: [{ Put: { TableName: table, Item: user } }, { Put: { TableName: table, Item: review, ConditionExpression: 'attribute_not_exists(pk) AND attribute_not_exists(sk)' } }] })); }
+    catch (error) { return responseError(error.name === 'TransactionCanceledException' ? 409 : 500, error.name === 'TransactionCanceledException' ? 'ONBOARDING_CONFLICT' : 'ONBOARDING_FAILED'); }
+    return json(202, { status: user.identityStatus, reviewId, message: 'Your Vouching request is being reviewed. You can continue exploring Vowch.' });
   }
   if (path === '/v1/me' && method === 'GET') {
     const profile = await get(`USER#${userId}`, 'PROFILE') || { userId };
@@ -312,7 +308,7 @@ export const handler = async (event) => {
       : candidateAvatar?.kind === 'upload' && typeof candidateAvatar.key === 'string' && candidateAvatar.key.startsWith(`members/${userId}/`)
         ? { kind: 'upload', key: candidateAvatar.key, contentType: String(candidateAvatar.contentType || 'image/jpeg').slice(0, 100), status: 'PENDING_SCAN' }
         : existing?.avatar || { kind: 'default', id: 'coral' };
-    const item = { ...existing, pk: `USER#${userId}`, sk: 'PROFILE', type: 'USER', userId, displayName, primarySkill, location, avatar, updatedAt: now(), createdAt: existing?.createdAt || now() };
+    const item = { ...existing, pk: `USER#${userId}`, sk: 'PROFILE', type: 'USER', userId, displayName, primarySkill, location, avatar, onboardingComplete: existing?.onboardingComplete ?? true, trustStatus: existing?.trustStatus || 'UNVOUCHED', identityStatus: existing?.identityStatus || 'NOT_STARTED', updatedAt: now(), createdAt: existing?.createdAt || now() };
     await db.send(new PutCommand({ TableName: table, Item: item })); return json(200, item);
   }
   if (path === '/v1/notifications' && method === 'GET') {
@@ -496,7 +492,7 @@ export const handler = async (event) => {
     if (!(await rateLimit(`gig:${userId}`, 30, 3600))) return responseError(429, 'RATE_LIMITED');
     if (!input.title || !input.description) return responseError(400, 'title and description are required');
     if (!Number.isInteger(input.budgetPaise) || input.budgetPaise < 100) return responseError(400, 'budgetPaise must be an integer of at least 100');
-    const profile = await get(`USER#${userId}`, 'PROFILE'); const gigId = id(); const createdAt = now(); const deadlineAt = input.deadlineAt && !Number.isNaN(Date.parse(input.deadlineAt)) ? new Date(input.deadlineAt).toISOString() : new Date(Date.now() + 7 * 86400000).toISOString(); const requirements = { minCred: Math.max(0, Math.min(1000, Number(input.requirements?.minCred || 0))), minRating: Math.max(0, Math.min(5, Number(input.requirements?.minRating || 0))), verifiedSkillOnly: input.requirements?.verifiedSkillOnly === true, houseOnly: input.requirements?.houseOnly === true };
+    const profile = await get(`USER#${userId}`, 'PROFILE'); const passport = await activePassportForUser(userId); if (!profile?.onboardingComplete || !passport) return responseError(409, 'ACTIVE_PASSPORT_REQUIRED'); const gigId = id(); const createdAt = now(); const deadlineAt = input.deadlineAt && !Number.isNaN(Date.parse(input.deadlineAt)) ? new Date(input.deadlineAt).toISOString() : new Date(Date.now() + 7 * 86400000).toISOString(); const requirements = { minCred: Math.max(0, Math.min(1000, Number(input.requirements?.minCred || 0))), minRating: Math.max(0, Math.min(5, Number(input.requirements?.minRating || 0))), verifiedSkillOnly: input.requirements?.verifiedSkillOnly === true, houseOnly: input.requirements?.houseOnly === true };
     if ((input.workMode || 'REMOTE') !== 'REMOTE') return responseError(400, 'REMOTE_ONLY_V1');
     const gig = { pk: `GIG#${gigId}`, sk: 'PROFILE', gsi1pk: 'GIGS#DRAFT', gsi1sk: createdAt, gsi4pk: `POSTER#${userId}`, gsi4sk: createdAt, type: 'GIG', gigId, posterId: userId, posterVerificationStatus: profile?.posterVerificationStatus || 'UNVERIFIED', title: input.title, description: input.description, skill: input.skill || 'general', requirements, budgetPaise: input.budgetPaise, deadlineAt, location: null, workMode: 'REMOTE', status: 'DRAFT', createdAt };
     return json(201, await put(gig));
@@ -818,7 +814,7 @@ export const handler = async (event) => {
     const parentPassport = await activePassportForUser(invite.inviterId); if (!parentPassport) return responseError(409, 'INVITER_PASSPORT_NOT_ACTIVE');
     const counter = await db.send(new UpdateCommand({ TableName: table, Key: { pk: 'SYSTEM', sk: 'PASSPORT_COUNTER' }, UpdateExpression: 'ADD #value :one', ExpressionAttributeNames: { '#value': 'value' }, ExpressionAttributeValues: { ':one': 1 }, ReturnValues: 'UPDATED_NEW' })); const passportNo = String(counter.Attributes.value).padStart(7, '0'); const issuedAt = now();
     const passport = { pk: `USER#${review.userId}`, sk: `PASSPORT#${passportNo}`, gsi1pk: `PASSPORT_NO#${passportNo}`, gsi1sk: review.userId, gsi2pk: `VOWCHER#${parentPassport.passportNo}`, gsi2sk: passportNo, gsi3pk: `SKILL#${profile.primarySkill}`, gsi3sk: '0500#' + review.userId, type: 'PASSPORT', userId: review.userId, passportNo, primarySkill: profile.primarySkill, vowchedBy: parentPassport.passportNo, generation: Number(parentPassport.generation || 0) + 1, lineage: [...(parentPassport.lineage || [parentPassport.passportNo]), passportNo], status: 'ACTIVE', cred: 500, issuedAt, chainHash: createHash('sha256').update(`${passportNo}:${review.userId}:${issuedAt}:${parentPassport.chainHash}`).digest('hex') };
-    const { pendingInviteCode, ...activeProfileBase } = profile; const activeProfile = { ...activeProfileBase, onboardingComplete: true, identityStatus: 'VERIFIED_MANUALLY', identityReviewedBy: userId, identityReviewedAt: now(), passportNo, updatedAt: now() }; const approvedReview = { ...review, status: 'APPROVED', gsi1pk: 'IDENTITY_REVIEWS#APPROVED', reviewedBy: userId, reviewedAt: now(), passportNo };
+    const { pendingInviteCode, ...activeProfileBase } = profile; const activeProfile = { ...activeProfileBase, onboardingComplete: true, trustStatus: 'VOUCHED', identityStatus: 'VERIFIED_MANUALLY', identityReviewedBy: userId, identityReviewedAt: now(), passportNo, updatedAt: now() }; const approvedReview = { ...review, status: 'APPROVED', gsi1pk: 'IDENTITY_REVIEWS#APPROVED', reviewedBy: userId, reviewedAt: now(), passportNo };
     try { await db.send(new TransactWriteCommand({ TransactItems: [
       { Put: { TableName: table, Item: activeProfile, ConditionExpression: 'identityStatus = :pending', ExpressionAttributeValues: { ':pending': 'PENDING_MANUAL_REVIEW' } } },
       { Put: { TableName: table, Item: approvedReview, ConditionExpression: '#status = :pending', ExpressionAttributeNames: { '#status': 'status' }, ExpressionAttributeValues: { ':pending': 'PENDING' } } },

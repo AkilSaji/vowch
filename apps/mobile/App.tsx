@@ -2528,10 +2528,10 @@ function ApplyForGig({
           amount,
         );
       setSent(true);
-    } catch {
+    } catch (error) {
       Alert.alert(
-        "Could not send application",
-        "Your application has not been submitted. Please check your connection and try again.",
+        "Vouching required",
+        error instanceof Error ? error.message : "Get vouched before applying for gigs.",
       );
     } finally {
       setSubmitting(false);
@@ -3523,9 +3523,10 @@ function Create({
   const [description, setDescription] = useState("");
   const [skill, setSkill] = useState("Moving help");
   const [budget, setBudget] = useState("");
-  const [location, setLocation] = useState("Brooklyn, NY");
+  const [location, setLocation] = useState("Bengaluru, India");
   const [media, setMedia] = useState(0);
   const [published, setPublished] = useState<Gig | null>(null);
+  const [publishing, setPublishing] = useState(false);
   const back = () => (step === 0 ? onBack() : setStep(step - 1));
   const next = () => {
     if (step === 1 && (!title || !description))
@@ -3545,23 +3546,29 @@ function Create({
       );
     setStep(step + 1);
   };
-  const publish = () => {
-    const gig = {
+  const publish = async () => {
+    const localGig = {
       gigId: `local-${Date.now()}`,
       title: title || "Community request",
       description: description || "Looking for trusted local help.",
       skill,
-      mode: "ONSITE" as const,
-      area: location.trim() || "Brooklyn, NY",
+      mode: "REMOTE" as const,
+      area: location.trim() || "Bengaluru, India",
       budgetPaise: Number(budget || 0) * 100,
       status: "OPEN" as const,
       poster: "You",
       vowches: 0,
       postedAt: "just now",
     };
-    setPublished(gig);
-    onCreated(gig);
-    setStep(5);
+    setPublishing(true);
+    try {
+      const gig = api.configured ? await api.createGig(localGig) : localGig;
+      setPublished(gig);
+      onCreated(gig);
+      setStep(5);
+    } catch (error) {
+      Alert.alert("Vouching required", error instanceof Error ? error.message : "Get vouched before posting a gig.");
+    } finally { setPublishing(false); }
   };
   if (step === 5)
     return (
@@ -3878,11 +3885,12 @@ function Create({
             <Text style={styles.cancelText}>Back</Text>
           </Pressable>
           <Pressable
-            style={[styles.publishButton, { flex: 2 }]}
-            onPress={step === 4 ? publish : next}
+            style={[styles.publishButton, { flex: 2 }, publishing && { opacity: 0.7 }]}
+            disabled={publishing}
+            onPress={step === 4 ? () => void publish() : next}
           >
             <Text style={styles.publishText}>
-              {step === 4 ? "Publish now" : "Continue"}
+              {publishing ? "Publishing…" : step === 4 ? "Publish now" : "Continue"}
             </Text>
             {icon("arrow-forward", 20, "#fff")}
           </Pressable>
