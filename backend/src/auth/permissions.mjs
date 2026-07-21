@@ -12,8 +12,18 @@ const ROLE_ALIASES = Object.freeze({
   'vowch-finance-reviewer': 'FINANCE_REVIEWER', 'vowch-support-viewer': 'SUPPORT_VIEWER',
 });
 
+const valuesFromClaim = (value) => {
+  if (Array.isArray(value)) return value.flatMap(valuesFromClaim);
+  if (value === null || value === undefined || value === '') return [];
+  const text = String(value).trim();
+  if (text.startsWith('[') && text.endsWith(']')) {
+    try { const parsed = JSON.parse(text); if (Array.isArray(parsed)) return parsed.flatMap(valuesFromClaim); } catch { /* API Gateway can stringify an array without valid JSON. */ }
+  }
+  return text.split(',').map((item) => item.trim().replace(/^[\[\s"']+|[\]\s"']+$/g, '')).filter(Boolean);
+};
+
 const claimRoles = (claims = {}) => {
-  const raw = [claims['custom:role'], claims.role, claims['cognito:groups']].filter(Boolean).flatMap((value) => String(value).split(','));
+  const raw = [claims['custom:role'], claims.role, claims['cognito:groups']].flatMap(valuesFromClaim);
   return [...new Set(raw.map((value) => ROLE_ALIASES[value.trim()] || value.trim()).filter((value) => ROLE_PERMISSIONS[value]))];
 };
 
