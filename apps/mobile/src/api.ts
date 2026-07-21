@@ -35,7 +35,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
     ...init,
   });
-  if (!response.ok) throw new Error(`Request failed (${response.status})`);
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({})) as { error?: string; message?: string };
+    throw new Error(body.error === "ACTIVE_PASSPORT_REQUIRED" ? "Get vouched before posting or applying for gigs." : body.error || body.message || `Request failed (${response.status})`);
+  }
   return response.json() as Promise<T>;
 }
 
