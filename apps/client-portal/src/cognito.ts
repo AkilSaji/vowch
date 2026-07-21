@@ -28,7 +28,7 @@ export const cognitoAuth = {
       await cognito('SignUp', { ClientId: clientId, Username: email, Password: demoPassword(), UserAttributes: [{ Name: 'email', Value: email }] });
       return { existing: false };
     } catch (error) {
-      if (String(error).includes('UsernameExistsException')) return { existing: true };
+      if (/UsernameExistsException|User already exists/i.test(String(error))) return { existing: true };
       throw error;
     }
   },

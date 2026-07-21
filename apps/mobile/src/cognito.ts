@@ -19,7 +19,7 @@ export const mobileAuth = {
       const password = `Vw!${Date.now().toString(36)}${Math.random().toString(36).slice(2)}9Z`;
       await cognito('SignUp', { ClientId: clientId, Username: email, Password: password, UserAttributes: [{ Name: 'email', Value: email }] });
     } catch (error) {
-      if (!String(error).includes('UsernameExistsException')) throw error;
+      if (!/UsernameExistsException|User already exists/i.test(String(error))) throw error;
     }
   },
   async startOtp(email: string) { await this.ensureUser(email); return this.beginOtp(email); },
